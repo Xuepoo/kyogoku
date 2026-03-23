@@ -47,6 +47,7 @@ impl ParserRegistry {
         registry.register(Box::new(crate::ass::AssParser));
         registry.register(Box::new(crate::vtt::VttParser));
         registry.register(Box::new(crate::rpy::RpyParser));
+        registry.register(Box::new(crate::md::MdParser));
 
         #[cfg(feature = "epub")]
         registry.register(Box::new(crate::epub::EpubParser));
@@ -62,6 +63,18 @@ impl ParserRegistry {
         self.parsers
             .iter()
             .find(|p| p.can_handle(path))
+            .map(|p| p.as_ref())
+    }
+
+    /// Get parser by extension name directly
+    pub fn get_parser_by_extension(&self, ext: &str) -> Option<&dyn Parser> {
+        self.parsers
+            .iter()
+            .find(|p| {
+                p.extensions()
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext))
+            })
             .map(|p| p.as_ref())
     }
 

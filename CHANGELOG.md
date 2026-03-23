@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CLI Enhancements**:
+  * `--dry-run` flag to preview translation without API calls.
+  * `--format` flag to force specific parser format.
+  * `--json` flag for machine-readable JSON output.
+- **Retry Logic**: Exponential backoff for transient API failures (rate limits, 5xx errors).
+- **Markdown Parser** (.md, .markdown):
+  * Preserves YAML/TOML frontmatter unchanged.
+  * Skips code blocks (``` and ~~~) from translation.
+  * Extracts headers and paragraphs for translation.
+
 ## [0.2.0] - 2026-03-23
 
 ### Added
