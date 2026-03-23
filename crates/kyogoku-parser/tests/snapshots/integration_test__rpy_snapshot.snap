@@ -1,0 +1,93 @@
+---
+source: crates/kyogoku-parser/tests/integration_test.rs
+expression: blocks
+---
+[
+    TranslationBlock {
+        id: "ce6855538d430779323143cb3fc9cc88a1bd80132afc04dbad3205533b3926c6",
+        speaker: Some(
+            "e",
+        ),
+        source: "You've created a new Ren'Py game.",
+        target: None,
+        metadata: Object {
+            "line": Number(8),
+            "quote": String("\""),
+            "type": String("dialogue"),
+        },
+    },
+    TranslationBlock {
+        id: "1d4918a38b5f423acfd2a8ef05b5f4fa8c6c18e6bd33f1e3875ce30e3aa90f2c",
+        speaker: Some(
+            "e",
+        ),
+        source: "Once you add a story, pictures, and music, you can release it to the world!",
+        target: None,
+        metadata: Object {
+            "line": Number(10),
+            "quote": String("\""),
+            "type": String("dialogue"),
+        },
+    },
+    TranslationBlock {
+        id: "1a4b11124c827caaabbd1cc312a3e8c585016451e584fce72ab10478a2201e7b",
+        speaker: Some(
+            "",
+        ),
+        source: "This is a narration line.",
+        target: None,
+        metadata: Object {
+            "line": Number(13),
+            "quote": String("\""),
+            "type": String("dialogue"),
+        },
+    },
+    TranslationBlock {
+        id: "520666427bfbf37af8eaf4d953ac4fac7a8c19a40077028cea88e5714ed34313",
+        speaker: Some(
+            "",
+        ),
+        source: "\"",
+        target: None,
+        metadata: Object {
+            "line": Number(16),
+            "quote": String("\""),
+            "type": String("dialogue"),
+        },
+    },
+    TranslationBlock {
+        id: "520666427bfbf37af8eaf4d953ac4fac7a8c19a40077028cea88e5714ed34313",
+        speaker: Some(
+            "",
+        ),
+        source: "\"",
+        target: None,
+        metadata: Object {
+            "line": Number(19),
+            "quote": String("\""),
+            "type": String("dialogue"),
+        },
+    },
+    TranslationBlock {
+        id: "687e006cf81ae7ddd2fe0ca465b54b9c823eb9e981659a468387c6068192fb2c",
+        speaker: None,
+        source: "It's a story.",
+        target: None,
+        metadata: Object {
+            "line": Number(22),
+            "quote": String("\""),
+            "type": String("menu"),
+        },
+    },
+    TranslationBlock {
+        id: "c77cba3fe3c5fce45fbe58ff07042c08376b91a84884101810b29a1073cdce18",
+        speaker: None,
+        source: "It's a game.",
+        target: None,
+        metadata: Object {
+            "line": Number(24),
+            "quote": String("\""),
+            "type": String("menu"),
+        },
+    },
+]
