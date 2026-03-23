@@ -5,6 +5,7 @@ pub mod srt;
 pub mod json;
 pub mod ass;
 pub mod vtt;
+pub mod rpy;
 
 pub use block::TranslationBlock;
 pub use parser::{Parser, ParserRegistry};
