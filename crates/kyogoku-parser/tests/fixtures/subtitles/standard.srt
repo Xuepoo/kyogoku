@@ -1,0 +1,13 @@
+1
+00:00:01,000 --> 00:00:04,000
+The quick brown fox jumps over the lazy dog.
+
+2
+00:00:05,500 --> 00:00:09,000
+这是一个测试字幕文件。
+
+3
+00:00:10,000 --> 00:00:14,000
+Multiple lines
+are supported
+in SRT format.
