@@ -175,6 +175,7 @@ fn test_registry_extensions() {
     assert!(exts.contains(&"ssa"));
     assert!(exts.contains(&"vtt"));
     assert!(exts.contains(&"webvtt"));
+    assert!(exts.contains(&"rpy"));
 }
 
 /// Test parser selection by file extension
@@ -186,6 +187,7 @@ fn test_parser_selection() {
     assert!(registry.get_parser(std::path::Path::new("test.SRT")).is_some()); // Case insensitive
     assert!(registry.get_parser(std::path::Path::new("test.ass")).is_some());
     assert!(registry.get_parser(std::path::Path::new("test.vtt")).is_some());
+    assert!(registry.get_parser(std::path::Path::new("test.rpy")).is_some());
     assert!(registry.get_parser(std::path::Path::new("test.unknown")).is_none());
 }
 
@@ -233,5 +235,48 @@ fn test_ass_snapshot() {
     let blocks = parser.parse(content).expect("Failed to parse ASS");
     
     // Use insta to snapshot the parsed structure
+    insta::assert_debug_snapshot!(blocks);
+}
+
+/// Test Ren'Py parser with basic dialogue
+#[test]
+fn test_rpy_basic() {
+    let content = include_str!("fixtures/games/basic_dialogue.rpy");
+    let registry = ParserRegistry::new();
+    let parser = registry.get_parser(std::path::Path::new("test.rpy")).unwrap();
+    
+    let blocks = parser.parse(content).expect("Failed to parse RPY");
+    
+    // Check key dialogue lines
+    assert!(blocks.iter().any(|b| b.source == "You've created a new Ren'Py game."));
+    assert!(blocks.iter().any(|b| b.source == "This is a narration line."));
+    assert!(blocks.iter().any(|b| b.source == "It's a story."));
+    
+    // Check speaker
+    let eileen_line = blocks.iter().find(|b| b.source.contains("Ren'Py game")).unwrap();
+    assert_eq!(eileen_line.speaker, Some("e".to_string()));
+    
+    // Check serialization roundtrip
+    // Note: Since we don't translate, the output should be identical to input if we just pass content
+    // But `serialize` is intended to replace blocks.
+    
+    // Let's mock a translation
+    let mut translated_blocks = blocks.clone();
+    if let Some(b) = translated_blocks.iter_mut().find(|b| b.source == "It's a story.") {
+        b.target = Some("这是一个故事。".to_string());
+    }
+    
+    let output = parser.serialize(&translated_blocks, content).expect("Failed to serialize");
+    assert!(output.contains("\"这是一个故事。\":"));
+}
+
+/// Snapshot test: Verify Ren'Py parsing structure
+#[test]
+fn test_rpy_snapshot() {
+    let content = include_str!("fixtures/games/basic_dialogue.rpy");
+    let registry = ParserRegistry::new();
+    let parser = registry.get_parser(std::path::Path::new("test.rpy")).unwrap();
+    
+    let blocks = parser.parse(content).expect("Failed to parse RPY");
     insta::assert_debug_snapshot!(blocks);
 }
