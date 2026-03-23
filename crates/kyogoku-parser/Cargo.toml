@@ -9,6 +9,7 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 blake3 = { workspace = true }
+nom = "8"
 
 [dev-dependencies]
 tempfile = "3.10"
