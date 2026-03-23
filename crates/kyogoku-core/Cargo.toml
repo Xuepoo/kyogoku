@@ -19,3 +19,4 @@ kyogoku-parser = { path = "../kyogoku-parser" }
 
 [dev-dependencies]
 tempfile = "3.27"
+wiremock = "0.6"

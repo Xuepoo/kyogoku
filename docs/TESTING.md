@@ -230,12 +230,12 @@ cargo test -- --show-output
 | `cargo test` | Built-in test runner |
 | `insta` | Snapshot testing |
 | `tempfile` | Temporary files in tests |
-| `wiremock` | HTTP mock server (future) |
+| `wiremock` | HTTP mock server for kyogoku-core API tests |
 | `cargo-insta` | CLI for snapshot management |
 
 ## Future Enhancements
 
-- [ ] Add `wiremock` for API mocking in kyogoku-core
+- [x] Add `wiremock` for API mocking in kyogoku-core
 - [ ] Add CLI integration tests with temp directories
 - [ ] Add property-based testing with `proptest` or `quickcheck`
 - [ ] Add mutation testing with `cargo-mutants`
