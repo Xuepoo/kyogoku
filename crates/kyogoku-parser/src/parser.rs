@@ -42,6 +42,7 @@ impl ParserRegistry {
         registry.register(Box::new(crate::json::JsonParser));
         registry.register(Box::new(crate::ass::AssParser));
         registry.register(Box::new(crate::vtt::VttParser));
+        registry.register(Box::new(crate::rpy::RpyParser));
 
         registry
     }
