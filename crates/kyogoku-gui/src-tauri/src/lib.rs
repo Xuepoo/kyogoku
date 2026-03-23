@@ -1,8 +1,15 @@
-use kyogoku_core::{config::Config, TranslationEngine, TranslationCache, Glossary};
+use kyogoku_core::{
+    config::Config,
+    rag::{
+        embeddings::EmbeddingModel,
+        vectordb::{SimpleVectorStore, VectorStore},
+    },
+    Glossary, TranslationCache, TranslationEngine,
+};
 use kyogoku_parser::ParserRegistry;
-use std::sync::Mutex;
 use std::path::PathBuf;
-use tauri::{State, Window, Emitter}; // Added Emitter, Removed Manager which was unused
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, State, Window};
 
 
 struct AppState {
@@ -26,6 +33,14 @@ fn save_config(state: State<AppState>, new_config: Config) -> Result<(), String>
     config.save().map_err(|e| e.to_string())?;
     
     Ok(())
+}
+
+#[derive(serde::Serialize, Clone)]
+struct TranslationProgressEvent {
+    completed: usize,
+    total: usize,
+    source: String,
+    target: String,
 }
 
 #[tauri::command]
@@ -58,6 +73,35 @@ async fn translate_file(
         }
     }
 
+    // Initialize RAG
+    if config.rag.enabled {
+        if let Some(ref model_path) = config.rag.model_path {
+            if let Some(ref tokenizer_path) = config.rag.tokenizer_path {
+                if let Some(ref vector_store_path) = config.rag.vector_store_path {
+                    // Check if paths exist
+                    if model_path.exists() && tokenizer_path.exists() {
+                        // Load model
+                        match EmbeddingModel::new(model_path, tokenizer_path) {
+                            Ok(model) => {
+                                let model = Arc::new(model);
+                                // Load vector store
+                                let mut store = SimpleVectorStore::new(vector_store_path);
+                                if let Err(e) = store.load() {
+                                    eprintln!("Failed to load vector store (starting fresh): {}", e);
+                                }
+                                let store = Arc::new(Mutex::new(store));
+                                engine = engine.with_rag(model, store);
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to load RAG model: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Parse
     let content = std::fs::read(&path).map_err(|e| e.to_string())?;
     let registry = ParserRegistry::new();
@@ -75,8 +119,13 @@ async fn translate_file(
 
     // Translate
     let window_clone = window.clone();
-    engine.translate_blocks(&mut blocks, move |completed, total| {
-        let _ = window_clone.emit("translation-progress", (completed, total));
+    engine.translate_blocks(&mut blocks, move |completed, total, block| {
+        let _ = window_clone.emit("translation-progress", TranslationProgressEvent {
+            completed,
+            total,
+            source: block.source.clone(),
+            target: block.target.clone().unwrap_or_default(),
+        });
     }).await.map_err(|e| e.to_string())?;
 
     // Serialize

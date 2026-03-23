@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::Semaphore;
 
 use kyogoku_parser::TranslationBlock;
@@ -8,6 +8,8 @@ use crate::api::{ApiClient, ChatMessage};
 use crate::cache::TranslationCache;
 use crate::config::{Config, TranslationStyle};
 use crate::glossary::Glossary;
+use crate::rag::embeddings::EmbeddingModel;
+use crate::rag::vectordb::VectorStore;
 
 /// Translation engine that orchestrates the translation pipeline.
 pub struct TranslationEngine {
@@ -15,6 +17,8 @@ pub struct TranslationEngine {
     client: ApiClient,
     cache: Option<TranslationCache>,
     glossary: Option<Glossary>,
+    embedding_model: Option<Arc<EmbeddingModel>>,
+    vector_store: Option<Arc<Mutex<dyn VectorStore + Send + Sync>>>,
     semaphore: Arc<Semaphore>,
 }
 
@@ -28,6 +32,8 @@ impl TranslationEngine {
             client,
             cache: None,
             glossary: None,
+            embedding_model: None,
+            vector_store: None,
             semaphore,
         })
     }
@@ -42,6 +48,16 @@ impl TranslationEngine {
         self
     }
 
+    pub fn with_rag(
+        mut self,
+        embedding_model: Arc<EmbeddingModel>,
+        vector_store: Arc<Mutex<dyn VectorStore + Send + Sync>>,
+    ) -> Self {
+        self.embedding_model = Some(embedding_model);
+        self.vector_store = Some(vector_store);
+        self
+    }
+
     /// Translate a single block
     pub async fn translate_block(&self, block: &TranslationBlock) -> Result<String> {
         // Check cache first
@@ -52,8 +68,11 @@ impl TranslationEngine {
             return Ok(cached);
         }
 
+        // Retrieve RAG context if enabled
+        let rag_context = self.retrieve_rag_context(&block.source).await?;
+
         // Build prompt
-        let prompt = self.build_prompt(block);
+        let prompt = self.build_prompt(block, &rag_context);
 
         // Call API
         let _permit = self.semaphore.acquire().await.unwrap();
@@ -75,16 +94,45 @@ impl TranslationEngine {
         if let Some(ref cache) = self.cache {
             cache.set(&block.id, &translation)?;
         }
+        
+        // Update vector store (async background)
+        if let Some(ref model) = self.embedding_model
+            && let Some(ref store) = self.vector_store
+        {
+            let source = block.source.clone();
+            let source_for_store = block.source.clone();
+            let id = block.id.clone();
+            let model = model.clone();
+            let store = store.clone();
+            
+            tokio::spawn(async move {
+                let embedding = tokio::task::spawn_blocking(move || {
+                    model.embed(&[source])
+                }).await;
+
+                if let Ok(Ok(embeddings)) = embedding {
+                    if let Some(vec) = embeddings.first() {
+                         let mut store = store.lock().unwrap();
+                         // Need to handle error properly in real app
+                         if let Err(e) = store.add(id, vec.clone(), source_for_store) {
+                             tracing::warn!("Failed to add to vector store: {}", e);
+                         }
+                    }
+                }
+            });
+        }
 
         Ok(translation)
     }
 
     /// Translate multiple blocks with context window
-    pub async fn translate_blocks(
+    pub async fn translate_blocks<F>(
         &self,
         blocks: &mut [TranslationBlock],
-        mut on_progress: impl FnMut(usize, usize),
-    ) -> Result<()> {
+        mut on_progress: F,
+    ) -> Result<()> 
+    where F: FnMut(usize, usize, &TranslationBlock)
+    {
         let total = blocks.iter().filter(|b| b.needs_translation()).count();
         let mut completed = 0;
 
@@ -117,7 +165,7 @@ impl TranslationEngine {
             }
 
             completed += 1;
-            on_progress(completed, total);
+            on_progress(completed, total, block);
         }
 
         Ok(())
@@ -136,8 +184,11 @@ impl TranslationEngine {
             return Ok(cached);
         }
 
+        // Retrieve RAG context if enabled
+        let rag_context = self.retrieve_rag_context(&block.source).await?;
+
         // Build prompt with context
-        let prompt = self.build_prompt_with_context(block, context);
+        let prompt = self.build_prompt_with_context(block, context, &rag_context);
 
         // Call API
         let _permit = self.semaphore.acquire().await.unwrap();
@@ -160,7 +211,74 @@ impl TranslationEngine {
             cache.set(&block.id, &translation)?;
         }
 
+        // Update vector store
+        if let Some(ref model) = self.embedding_model
+            && let Some(ref store) = self.vector_store
+        {
+            let source = block.source.clone();
+            let id = block.id.clone();
+            let model = model.clone();
+            let store = store.clone();
+            
+            // Run embedding in background to avoid blocking translation flow too much
+            tokio::spawn(async move {
+                // Compute embedding
+                // Note: embed is sync/blocking, so use spawn_blocking
+                let source_for_embed = source.clone();
+                let embedding = tokio::task::spawn_blocking(move || {
+                    model.embed(&[source_for_embed])
+                }).await;
+
+                if let Ok(Ok(embeddings)) = embedding {
+                    if let Some(vec) = embeddings.first() {
+                         let mut store = store.lock().unwrap();
+                         if let Err(e) = store.add(id, vec.clone(), source) {
+                             tracing::warn!("Failed to add vector to store: {}", e);
+                         } else {
+                             // Auto-save occasionally? For now, maybe just keep in memory until explicit save?
+                             // Or save on every add (slow).
+                             // Ideally, save periodically.
+                         }
+                    }
+                }
+            });
+        }
+
         Ok(translation)
+    }
+
+    async fn retrieve_rag_context(&self, source: &str) -> Result<Vec<(String, String)>> {
+        let mut context = Vec::new();
+
+        if let Some(ref model) = self.embedding_model
+            && let Some(ref store) = self.vector_store
+            && let Some(ref cache) = self.cache
+        {
+            let source = source.to_string();
+            let model = model.clone();
+            let store = store.clone();
+
+            // Compute embedding
+            let embedding = tokio::task::spawn_blocking(move || {
+                model.embed(&[source])
+            }).await??;
+
+            if let Some(query_vec) = embedding.first() {
+                // Search vector store
+                let results = {
+                    let store = store.lock().unwrap();
+                    store.search(query_vec, 3)? // Top 3 similar
+                };
+
+                for (id, _score, source_text) in results {
+                    if let Some(target) = cache.get(&id) {
+                        context.push((source_text, target));
+                    }
+                }
+            }
+        }
+
+        Ok(context)
     }
 
     fn system_prompt(&self) -> String {
@@ -184,7 +302,7 @@ impl TranslationEngine {
         )
     }
 
-    fn build_prompt(&self, block: &TranslationBlock) -> String {
+    fn build_prompt(&self, block: &TranslationBlock, rag_context: &[(String, String)]) -> String {
         let mut prompt = String::new();
 
         // Add glossary if available
@@ -193,6 +311,15 @@ impl TranslationEngine {
         {
             prompt.push_str(&glossary_text);
             prompt.push_str("\n\n");
+        }
+
+        // Add RAG context
+        if !rag_context.is_empty() {
+            prompt.push_str("参考译文：\n");
+            for (src, tgt) in rag_context {
+                prompt.push_str(&format!("原文: {}\n译文: {}\n\n", src, tgt));
+            }
+            prompt.push('\n');
         }
 
         // Add speaker context if available
@@ -209,6 +336,7 @@ impl TranslationEngine {
         &self,
         block: &TranslationBlock,
         context: &[(String, String)],
+        rag_context: &[(String, String)],
     ) -> String {
         let mut prompt = String::new();
 
@@ -220,7 +348,16 @@ impl TranslationEngine {
             prompt.push_str("\n\n");
         }
 
-        // Add context window
+        // Add RAG context (Reference Translations)
+        if !rag_context.is_empty() {
+            prompt.push_str("参考译文（来自类似文本）：\n");
+            for (src, tgt) in rag_context {
+                prompt.push_str(&format!("参考原文: {}\n参考译文: {}\n\n", src, tgt));
+            }
+            prompt.push('\n');
+        }
+
+        // Add context window (Immediate Context)
         if !context.is_empty() {
             prompt.push_str("前文参考：\n");
             for (src, tgt) in context.iter().rev().take(5) {
@@ -333,7 +470,7 @@ mod tests {
         let mut progress_calls = Vec::new();
 
         engine
-            .translate_blocks(&mut blocks, |done, total| {
+            .translate_blocks(&mut blocks, |done, total, _| {
                 progress_calls.push((done, total))
             })
             .await

@@ -31,11 +31,19 @@ interface ProjectConfig {
     output_dir?: string | null;
 }
 
+interface RagConfig {
+    enabled: boolean;
+    model_path?: string | null;
+    tokenizer_path?: string | null;
+    vector_store_path?: string | null;
+}
+
 interface Config {
     api: ApiConfig;
     translation: TranslationConfig;
     advanced: AdvancedConfig;
     project: ProjectConfig;
+    rag: RagConfig;
 }
 
 // --- DOM Elements ---
@@ -46,6 +54,13 @@ const apiModel = document.querySelector("#api-model") as HTMLInputElement;
 const translationStyle = document.querySelector("#translation-style") as HTMLSelectElement;
 const contextSize = document.querySelector("#context-size") as HTMLInputElement;
 const maxConcurrency = document.querySelector("#max-concurrency") as HTMLInputElement;
+
+// RAG Elements
+const ragEnabled = document.querySelector("#rag-enabled") as HTMLInputElement;
+const ragModelPath = document.querySelector("#rag-model-path") as HTMLInputElement;
+const ragTokenizerPath = document.querySelector("#rag-tokenizer-path") as HTMLInputElement;
+const ragStorePath = document.querySelector("#rag-store-path") as HTMLInputElement;
+const ragSettings = document.querySelector("#rag-settings") as HTMLElement;
 
 const configForm = document.querySelector("#config-form") as HTMLFormElement;
 const reloadBtn = document.querySelector("#reload-btn") as HTMLButtonElement;
@@ -71,6 +86,26 @@ async function loadConfig() {
         if (translationStyle) translationStyle.value = config.translation.style;
         if (contextSize) contextSize.value = config.translation.context_size.toString();
         if (maxConcurrency) maxConcurrency.value = config.advanced.max_concurrency.toString();
+
+        // RAG Config
+        if (ragEnabled) {
+            ragEnabled.checked = config.rag.enabled;
+            // Toggle visibility on load
+            if (config.rag.enabled && ragSettings) {
+                ragSettings.classList.remove("hidden");
+            } else if (ragSettings) {
+                ragSettings.classList.add("hidden");
+            }
+        }
+        if (ragModelPath && config.rag.model_path) {
+            ragModelPath.value = config.rag.model_path;
+        }
+        if (ragTokenizerPath && config.rag.tokenizer_path) {
+            ragTokenizerPath.value = config.rag.tokenizer_path;
+        }
+        if (ragStorePath && config.rag.vector_store_path) {
+            ragStorePath.value = config.rag.vector_store_path;
+        }
 
         setStatus("Configuration loaded", "success");
         setTimeout(clearStatus, 2000);
@@ -101,7 +136,14 @@ async function saveConfig() {
             ...currentConfig.advanced,
             max_concurrency: parseInt(maxConcurrency.value, 10),
         },
-        project: currentConfig.project // Keep existing project config
+        project: currentConfig.project, // Keep existing project config
+        rag: {
+            ...currentConfig.rag,
+            enabled: ragEnabled ? ragEnabled.checked : false,
+            model_path: ragModelPath ? ragModelPath.value || null : null,
+            tokenizer_path: ragTokenizerPath ? ragTokenizerPath.value || null : null,
+            vector_store_path: ragStorePath ? ragStorePath.value || null : null,
+        }
     };
 
     try {
@@ -145,6 +187,67 @@ function showSavedBadge() {
 }
 
 const dropZone = document.querySelector("#drop-zone") as HTMLElement;
+const previewSection = document.querySelector("#preview-section") as HTMLElement;
+const previewContainer = document.querySelector("#preview-container") as HTMLElement;
+const previewStatus = document.querySelector("#preview-status") as HTMLElement;
+const recentActivity = document.querySelector("#recent-activity") as HTMLElement;
+
+// --- Recent Activity (localStorage) ---
+
+interface TranslationHistoryItem {
+    filename: string;
+    timestamp: number;
+    blocksCount: number;
+}
+
+function getHistory(): TranslationHistoryItem[] {
+    try {
+        const data = localStorage.getItem("kyogoku_history");
+        return data ? JSON.parse(data) : [];
+    } catch {
+        return [];
+    }
+}
+
+function addToHistory(filename: string, blocksCount: number) {
+    const history = getHistory();
+    history.unshift({ filename, timestamp: Date.now(), blocksCount });
+    // Keep only last 10
+    if (history.length > 10) history.pop();
+    localStorage.setItem("kyogoku_history", JSON.stringify(history));
+}
+
+function renderRecentActivity() {
+    if (!recentActivity) return;
+    const history = getHistory();
+    
+    if (history.length === 0) {
+        recentActivity.innerHTML = `
+            <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
+            <div class="bg-gray-900/50 rounded p-4 text-center">
+                <p class="text-sm text-gray-500 italic">No recent tasks found.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const items = history.map(item => {
+        const date = new Date(item.timestamp);
+        const timeStr = date.toLocaleString();
+        return `
+            <div class="flex justify-between items-center p-2 bg-gray-900/30 rounded text-sm">
+                <span class="text-gray-300 truncate max-w-xs">${item.filename}</span>
+                <span class="text-gray-500 text-xs">${timeStr}</span>
+            </div>
+        `;
+    }).join("");
+    
+    recentActivity.innerHTML = `
+        <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
+        <div class="space-y-2">${items}</div>
+    `;
+}
+
 
 // --- Event Listeners ---
 
@@ -163,6 +266,18 @@ window.addEventListener("DOMContentLoaded", async () => {
             loadConfig();
         });
     }
+
+    if (ragEnabled && ragSettings) {
+        ragEnabled.addEventListener("change", () => {
+            if (ragEnabled.checked) {
+                ragSettings.classList.remove("hidden");
+            } else {
+                ragSettings.classList.add("hidden");
+            }
+        });
+    }
+
+    renderRecentActivity();
 
     if (dropZone) {
         dropZone.addEventListener("click", async () => {
@@ -197,18 +312,49 @@ window.addEventListener("DOMContentLoaded", async () => {
     await listen('translation-start', (event) => {
         const total = event.payload as number;
         setStatus(`Translation started: 0/${total} blocks...`);
+        
+        if (previewSection) previewSection.classList.remove("hidden");
+        if (recentActivity) recentActivity.classList.add("hidden");
+        if (previewContainer) previewContainer.innerHTML = "";
+        if (previewStatus) previewStatus.textContent = `0 / ${total}`;
     });
 
     await listen('translation-progress', (event) => {
-        const [done, total] = event.payload as [number, number];
-        const percent = Math.round((done / total) * 100);
-        setStatus(`Translating: ${done}/${total} (${percent}%)`);
-        // We could update a progress bar here if we had one
+        const payload = event.payload as { completed: number, total: number, source: string, target: string };
+        const { completed, total, source, target } = payload;
+        const percent = Math.round((completed / total) * 100);
+        
+        setStatus(`Translating: ${completed}/${total} (${percent}%)`);
+        if (previewStatus) previewStatus.textContent = `${completed} / ${total}`;
+        
+        if (previewContainer) {
+            const row = document.createElement("div");
+            row.className = "grid grid-cols-2 gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors";
+            row.innerHTML = `
+                <div class="text-gray-400 font-serif leading-relaxed text-right border-r border-gray-700 pr-4">${source}</div>
+                <div class="text-emerald-300 font-serif leading-relaxed pl-2">${target}</div>
+            `;
+            // append to end since flex-col-reverse handles the scrolling to bottom/top
+            // Wait, flex-col-reverse puts the FIRST child at the bottom.
+            // If I append, it goes to the TOP (visually).
+            // I want new items at the TOP? Or bottom?
+            // Usually bottom like a terminal.
+            // If I use flex-col-reverse, the first child (index 0) is at the bottom.
+            // So prepending adds to the bottom visually? No.
+            // Let's just use prepend for now, so newest is at the top.
+            previewContainer.prepend(row);
+        }
     });
 
     await listen('translation-complete', (event) => {
         const path = event.payload as string;
         setStatus(`Done! Saved to: ${path}`, "success");
+        
+        // Add to history
+        const filename = path.split('/').pop() || path;
+        addToHistory(filename, 0); // TODO: track actual block count
+        renderRecentActivity();
+        
         setTimeout(clearStatus, 5000);
     });
 });

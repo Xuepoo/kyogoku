@@ -242,6 +242,58 @@ kyogoku translate  # Uses project defaults
 
 ---
 
+## [rag] Section (Beta)
+
+RAG (Retrieval-Augmented Generation) enables semantic search of past translations for improved consistency.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `enabled` | Boolean | `false` | Enable RAG memory feature. |
+| `model_path` | Path | `null` | Path to ONNX embedding model file. |
+| `tokenizer_path` | Path | `null` | Path to tokenizer.json file. |
+| `vector_store_path` | Path | `null` | Path to store/load vector embeddings. |
+
+### Setup
+
+RAG requires downloading an ONNX embedding model:
+
+```bash
+# Download model (e.g., all-MiniLM-L6-v2, ~86MB)
+mkdir -p ~/.local/share/kyogoku/models
+cd ~/.local/share/kyogoku/models
+curl -L -o model.onnx https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx
+curl -L -o tokenizer.json https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json
+```
+
+### Configuration
+
+```toml
+[rag]
+enabled = true
+model_path = "~/.local/share/kyogoku/models/model.onnx"
+tokenizer_path = "~/.local/share/kyogoku/models/tokenizer.json"
+vector_store_path = "~/.local/share/kyogoku/vectors.bin"
+```
+
+### How It Works
+
+1. **Embedding**: Each translated text is converted to a vector embedding
+2. **Storage**: Embeddings are stored in a simple vector database
+3. **Retrieval**: Before translating new text, similar past translations are retrieved
+4. **Context**: Retrieved translations are included in the LLM prompt for consistency
+
+### Recommended Models
+
+| Model | Size | Quality | Speed |
+|-------|------|---------|-------|
+| `all-MiniLM-L6-v2` | 86MB | Good | Fast |
+| `all-mpnet-base-v2` | 420MB | Better | Medium |
+| `multilingual-e5-base` | 1.1GB | Best for CJK | Slower |
+
+*Note: RAG is optional and disabled by default. It increases memory usage but improves translation consistency for large projects.*
+
+---
+
 ## File Paths
 
 ### XDG Base Directory Specification

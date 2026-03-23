@@ -98,7 +98,7 @@ pub async fn run(
 
         // Translate
         engine
-            .translate_blocks(&mut blocks, |completed, _total| {
+            .translate_blocks(&mut blocks, |completed, _total, _| {
                 pb.set_position(completed as u64);
             })
             .await?;
