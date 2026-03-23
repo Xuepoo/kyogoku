@@ -10,7 +10,7 @@ Kyogoku (京极) derives its name from "驱邪" (exorcism), aiming to banish the
 
 ## ✨ Features
 
-- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT subtitles, JSON (MTool format)
+- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT subtitles, Ren'Py scripts, JSON (MTool format)
 - **Intelligent Caching**: Blake3 content hashing with sled KV store for incremental translation
 - **Context Window**: Maintains translation consistency with sliding window of previous translations
 - **Glossary System**: Custom terminology enforcement for character names, locations, etc.
@@ -77,6 +77,14 @@ kyogoku translate ./game.json --glossary ./glossary.json
 | [Roadmap](docs/ROADMAP.md) | Future features and milestones |
 | [Changelog](CHANGELOG.md) | Version history and release notes |
 
+## ✅ CI Status
+
+GitHub Actions CI runs on:
+- `push` to `dev` and `main`
+- `pull_request` to `dev` and `main`
+
+Checks include formatting (`rustfmt`), lint (`clippy -D warnings`), and workspace tests.
+
 ## 🔧 CLI Commands
 
 ```
@@ -113,4 +121,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 Inspired by [LinguaGacha](https://github.com/neavo/LinguaGacha) and the visual novel translation community.
-

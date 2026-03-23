@@ -27,23 +27,31 @@ impl AssTimestamp {
         if parts.len() != 3 {
             return None;
         }
-        
+
         let hours = parts[0].parse().ok()?;
         let minutes = parts[1].parse().ok()?;
-        
+
         let sec_parts: Vec<&str> = parts[2].split('.').collect();
         if sec_parts.len() != 2 {
             return None;
         }
-        
+
         let seconds = sec_parts[0].parse().ok()?;
         let centiseconds = sec_parts[1].parse().ok()?;
-        
-        Some(Self { hours, minutes, seconds, centiseconds })
+
+        Some(Self {
+            hours,
+            minutes,
+            seconds,
+            centiseconds,
+        })
     }
-    
-    fn to_string(&self) -> String {
-        format!(
+}
+
+impl std::fmt::Display for AssTimestamp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{}:{:02}:{:02}.{:02}",
             self.hours, self.minutes, self.seconds, self.centiseconds
         )
@@ -69,12 +77,12 @@ impl DialogueLine {
     fn parse(line: &str) -> Option<Self> {
         // Dialogue: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         let content = line.strip_prefix("Dialogue:")?.trim();
-        
+
         // Split by comma, but only first 9 commas (Text can contain commas)
         let mut parts = Vec::new();
         let mut current = String::new();
         let mut count = 0;
-        
+
         for ch in content.chars() {
             if ch == ',' && count < 9 {
                 parts.push(std::mem::take(&mut current));
@@ -84,11 +92,11 @@ impl DialogueLine {
             }
         }
         parts.push(current); // Add the remaining text
-        
+
         if parts.len() < 10 {
             return None;
         }
-        
+
         Some(Self {
             layer: parts[0].trim().parse().unwrap_or(0),
             start: AssTimestamp::parse(parts[1].trim())?,
@@ -109,7 +117,7 @@ fn strip_ass_tags(text: &str) -> String {
     let mut result = String::new();
     let mut in_tag = false;
     let mut chars = text.chars().peekable();
-    
+
     while let Some(c) = chars.next() {
         if c == '{' {
             in_tag = true;
@@ -117,19 +125,18 @@ fn strip_ass_tags(text: &str) -> String {
             in_tag = false;
         } else if !in_tag {
             // Handle \N (hard line break) and \n (soft line break)
-            if c == '\\' {
-                if let Some(&next) = chars.peek() {
-                    if next == 'N' || next == 'n' {
-                        result.push('\n');
-                        chars.next();
-                        continue;
-                    }
-                }
+            if c == '\\'
+                && let Some(&next) = chars.peek()
+                && (next == 'N' || next == 'n')
+            {
+                result.push('\n');
+                chars.next();
+                continue;
             }
             result.push(c);
         }
     }
-    
+
     result
 }
 
@@ -142,58 +149,59 @@ impl Parser for AssParser {
         let mut blocks = Vec::new();
         let mut in_events = false;
         let mut dialogue_index = 0u32;
-        
+
         for line in content.lines() {
             let line = line.trim();
-            
+
             // Check for section headers
             if line.starts_with('[') && line.ends_with(']') {
                 in_events = line.eq_ignore_ascii_case("[Events]");
                 continue;
             }
-            
+
             // Only process dialogue lines in Events section
-            if in_events && line.starts_with("Dialogue:") {
-                if let Some(dialogue) = DialogueLine::parse(line) {
-                    let plain_text = strip_ass_tags(&dialogue.text);
-                    
-                    // Skip empty dialogues
-                    if plain_text.trim().is_empty() {
-                        continue;
-                    }
-                    
-                    let speaker = if dialogue.name.is_empty() {
-                        None
-                    } else {
-                        Some(dialogue.name.clone())
-                    };
-                    
-                    let mut block = TranslationBlock::new(&plain_text);
-                    if let Some(s) = speaker {
-                        block = block.with_speaker(s);
-                    }
-                    
-                    block = block.with_metadata(json!({
-                        "format": "ass",
-                        "index": dialogue_index,
-                        "layer": dialogue.layer,
-                        "start": dialogue.start.to_string(),
-                        "end": dialogue.end.to_string(),
-                        "style": dialogue.style,
-                        "name": dialogue.name,
-                        "margin_l": dialogue.margin_l,
-                        "margin_r": dialogue.margin_r,
-                        "margin_v": dialogue.margin_v,
-                        "effect": dialogue.effect,
-                        "original_text": dialogue.text,
-                    }));
-                    
-                    blocks.push(block);
-                    dialogue_index += 1;
+            if in_events
+                && line.starts_with("Dialogue:")
+                && let Some(dialogue) = DialogueLine::parse(line)
+            {
+                let plain_text = strip_ass_tags(&dialogue.text);
+
+                // Skip empty dialogues
+                if plain_text.trim().is_empty() {
+                    continue;
                 }
+
+                let speaker = if dialogue.name.is_empty() {
+                    None
+                } else {
+                    Some(dialogue.name.clone())
+                };
+
+                let mut block = TranslationBlock::new(&plain_text);
+                if let Some(s) = speaker {
+                    block = block.with_speaker(s);
+                }
+
+                block = block.with_metadata(json!({
+                    "format": "ass",
+                    "index": dialogue_index,
+                    "layer": dialogue.layer,
+                    "start": dialogue.start.to_string(),
+                    "end": dialogue.end.to_string(),
+                    "style": dialogue.style,
+                    "name": dialogue.name,
+                    "margin_l": dialogue.margin_l,
+                    "margin_r": dialogue.margin_r,
+                    "margin_v": dialogue.margin_v,
+                    "effect": dialogue.effect,
+                    "original_text": dialogue.text,
+                }));
+
+                blocks.push(block);
+                dialogue_index += 1;
             }
         }
-        
+
         tracing::debug!("Parsed {} dialogue blocks from ASS", blocks.len());
         Ok(blocks)
     }
@@ -218,17 +226,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             // Use template but replace dialogues
             let mut result = String::new();
             let mut in_events = false;
-            
+
             for line in template.lines() {
                 let trimmed = line.trim();
-                
+
                 if trimmed.starts_with('[') && trimmed.ends_with(']') {
                     in_events = trimmed.eq_ignore_ascii_case("[Events]");
                     result.push_str(line);
                     result.push('\n');
                     continue;
                 }
-                
+
                 if in_events {
                     if trimmed.starts_with("Format:") {
                         result.push_str(line);
@@ -247,31 +255,67 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     result.push('\n');
                 }
             }
-            
+
             result
         };
-        
+
         // Add dialogue lines
         for block in blocks {
-            let layer = block.metadata.get("layer").and_then(|v| v.as_u64()).unwrap_or(0);
-            let start = block.metadata.get("start").and_then(|v| v.as_str()).unwrap_or("0:00:00.00");
-            let end = block.metadata.get("end").and_then(|v| v.as_str()).unwrap_or("0:00:10.00");
-            let style = block.metadata.get("style").and_then(|v| v.as_str()).unwrap_or("Default");
-            let name = block.metadata.get("name").and_then(|v| v.as_str()).unwrap_or("");
-            let margin_l = block.metadata.get("margin_l").and_then(|v| v.as_u64()).unwrap_or(0);
-            let margin_r = block.metadata.get("margin_r").and_then(|v| v.as_u64()).unwrap_or(0);
-            let margin_v = block.metadata.get("margin_v").and_then(|v| v.as_u64()).unwrap_or(0);
-            let effect = block.metadata.get("effect").and_then(|v| v.as_str()).unwrap_or("");
-            
+            let layer = block
+                .metadata
+                .get("layer")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let start = block
+                .metadata
+                .get("start")
+                .and_then(|v| v.as_str())
+                .unwrap_or("0:00:00.00");
+            let end = block
+                .metadata
+                .get("end")
+                .and_then(|v| v.as_str())
+                .unwrap_or("0:00:10.00");
+            let style = block
+                .metadata
+                .get("style")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Default");
+            let name = block
+                .metadata
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let margin_l = block
+                .metadata
+                .get("margin_l")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let margin_r = block
+                .metadata
+                .get("margin_r")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let margin_v = block
+                .metadata
+                .get("margin_v")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let effect = block
+                .metadata
+                .get("effect")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
             // Use translated text, escape newlines as \N
             let text = block.output().replace('\n', "\\N");
-            
+
             output.push_str(&format!(
                 "Dialogue: {},{},{},{},{},{},{},{},{},{}\n",
                 layer, start, end, style, name, margin_l, margin_r, margin_v, effect, text
             ));
         }
-        
+
         Ok(output)
     }
 }
@@ -357,15 +401,18 @@ Dialogue: 0,0:00:09.00,0:00:12.00,Default,,0,0,0,,Line one\NLine two
     fn test_ass_roundtrip() {
         let parser = AssParser;
         let blocks = parser.parse(SAMPLE_ASS).unwrap();
-        
+
         // Add translations
-        let translated: Vec<_> = blocks.into_iter().map(|b| {
-            let source = b.source.clone();
-            b.with_target(format!("[TR] {}", source))
-        }).collect();
-        
+        let translated: Vec<_> = blocks
+            .into_iter()
+            .map(|b| {
+                let source = b.source.clone();
+                b.with_target(format!("[TR] {}", source))
+            })
+            .collect();
+
         let output = parser.serialize(&translated, SAMPLE_ASS).unwrap();
-        
+
         // Re-parse
         let reparsed = parser.parse(&output).unwrap();
         assert_eq!(reparsed.len(), 3);

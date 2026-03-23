@@ -20,7 +20,11 @@ pub trait Parser: Send + Sync {
     fn can_handle(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| self.extensions().iter().any(|e| e.eq_ignore_ascii_case(ext)))
+            .map(|ext| {
+                self.extensions()
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext))
+            })
             .unwrap_or(false)
     }
 }
@@ -52,7 +56,10 @@ impl ParserRegistry {
     }
 
     pub fn get_parser(&self, path: &Path) -> Option<&dyn Parser> {
-        self.parsers.iter().find(|p| p.can_handle(path)).map(|p| p.as_ref())
+        self.parsers
+            .iter()
+            .find(|p| p.can_handle(path))
+            .map(|p| p.as_ref())
     }
 
     pub fn supported_extensions(&self) -> Vec<&str> {
@@ -75,7 +82,12 @@ impl ParserRegistry {
     }
 
     /// Write translated blocks back to file
-    pub fn write_file(&self, path: &Path, blocks: &[TranslationBlock], template: &str) -> Result<()> {
+    pub fn write_file(
+        &self,
+        path: &Path,
+        blocks: &[TranslationBlock],
+        template: &str,
+    ) -> Result<()> {
         let parser = self
             .get_parser(path)
             .ok_or_else(|| anyhow::anyhow!("No parser found for file: {}", path.display()))?;
@@ -113,7 +125,7 @@ mod tests {
     #[test]
     fn test_parser_selection() {
         let registry = ParserRegistry::new();
-        
+
         assert!(registry.get_parser(Path::new("test.txt")).is_some());
         assert!(registry.get_parser(Path::new("test.srt")).is_some());
         assert!(registry.get_parser(Path::new("test.json")).is_some());
