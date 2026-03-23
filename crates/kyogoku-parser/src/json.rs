@@ -63,7 +63,16 @@ fn parse_object(map: &Map<String, Value>) -> Vec<TranslationBlock> {
                             block = block.with_target(target.clone());
                         }
                     blocks.push(block);
+                } else {
+                    // Recursively parse nested objects
+                    let nested_blocks = parse_object(nested);
+                    blocks.extend(nested_blocks);
                 }
+            }
+            Value::Array(arr) => {
+                // Recursively parse nested arrays
+                let arr_blocks = parse_array(arr);
+                blocks.extend(arr_blocks);
             }
             _ => {}
         }

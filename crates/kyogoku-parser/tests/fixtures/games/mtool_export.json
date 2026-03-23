@@ -1,0 +1,19 @@
+{
+  "0001": "Welcome to the game!",
+  "0002": "What is your name?",
+  "0003": "Nice to meet you, {player_name}.",
+  "dataList": [
+    "Item description one",
+    "Item description two"
+  ],
+  "dialogue": [
+    {
+      "speaker": "Alice",
+      "text": "Hello there!"
+    },
+    {
+      "speaker": "Bob", 
+      "message": "How are you?"
+    }
+  ]
+}
