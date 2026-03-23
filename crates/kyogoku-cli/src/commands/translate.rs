@@ -69,8 +69,11 @@ pub async fn run(
         println!("\nProcessing: {}", file_path.display());
 
         // Read and parse file
-        let content = std::fs::read_to_string(file_path)?;
-        let mut blocks = registry.parse_file(file_path)?;
+        let content = std::fs::read(file_path)?;
+        let parser = registry
+            .get_parser(file_path)
+            .ok_or_else(|| anyhow::anyhow!("No parser found for file: {}", file_path.display()))?;
+        let mut blocks = parser.parse(&content)?;
 
         let needs_translation = blocks.iter().filter(|b| b.needs_translation()).count();
         println!(

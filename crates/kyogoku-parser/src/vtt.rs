@@ -95,13 +95,14 @@ impl Parser for VttParser {
         &["vtt", "webvtt"]
     }
 
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>> {
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>> {
+        let content_str = std::str::from_utf8(content)?;
         let mut blocks = Vec::new();
         let mut cue_lines: Vec<&str> = Vec::new();
         let mut cue_index = 0u32;
         let mut in_header = true;
 
-        for line in content.lines() {
+        for line in content_str.lines() {
             // Skip WEBVTT header line
             if in_header && line.starts_with("WEBVTT") {
                 in_header = false;
@@ -165,7 +166,7 @@ impl Parser for VttParser {
         Ok(blocks)
     }
 
-    fn serialize(&self, blocks: &[TranslationBlock], _template: &str) -> Result<String> {
+    fn serialize(&self, blocks: &[TranslationBlock], _template: &[u8]) -> Result<Vec<u8>> {
         let mut output = String::from("WEBVTT\n\n");
 
         for block in blocks {
@@ -206,7 +207,7 @@ impl Parser for VttParser {
             output.push_str("\n\n");
         }
 
-        Ok(output.trim_end().to_string())
+        Ok(output.trim_end().as_bytes().to_vec())
     }
 }
 
@@ -214,7 +215,7 @@ impl Parser for VttParser {
 mod tests {
     use super::*;
 
-    const SAMPLE_VTT: &str = r#"WEBVTT
+    const SAMPLE_VTT: &[u8] = b"WEBVTT
 
 1
 00:00:01.000 --> 00:00:04.000
@@ -227,7 +228,7 @@ This is <b>styled</b> text.
 00:00:09.000 --> 00:00:12.000
 Line one
 Line two
-"#;
+";
 
     #[test]
     fn test_strip_vtt_tags() {
@@ -283,11 +284,12 @@ Line two
         ];
 
         let parser = VttParser;
-        let output = parser.serialize(&blocks, "").unwrap();
+        let output = parser.serialize(&blocks, b"").unwrap();
+        let output_str = std::str::from_utf8(&output).unwrap();
 
-        assert!(output.starts_with("WEBVTT"));
-        assert!(output.contains("00:00:01.000 --> 00:00:04.000"));
-        assert!(output.contains("你好"));
+        assert!(output_str.starts_with("WEBVTT"));
+        assert!(output_str.contains("00:00:01.000 --> 00:00:04.000"));
+        assert!(output_str.contains("你好"));
     }
 
     #[test]

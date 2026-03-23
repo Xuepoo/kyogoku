@@ -9,12 +9,12 @@ pub trait Parser: Send + Sync {
     /// Returns the file extensions this parser handles
     fn extensions(&self) -> &[&str];
 
-    /// Parse content string into TranslationBlock sequence
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>>;
+    /// Parse content bytes into TranslationBlock sequence
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>>;
 
     /// Serialize blocks back to the original format
     /// `template` is the original file content for preserving structure
-    fn serialize(&self, blocks: &[TranslationBlock], template: &str) -> Result<String>;
+    fn serialize(&self, blocks: &[TranslationBlock], template: &[u8]) -> Result<Vec<u8>>;
 
     /// Check if this parser can handle the given file extension
     fn can_handle(&self, path: &Path) -> bool {
@@ -48,6 +48,9 @@ impl ParserRegistry {
         registry.register(Box::new(crate::vtt::VttParser));
         registry.register(Box::new(crate::rpy::RpyParser));
 
+        #[cfg(feature = "epub")]
+        registry.register(Box::new(crate::epub::EpubParser));
+
         registry
     }
 
@@ -75,7 +78,7 @@ impl ParserRegistry {
             .get_parser(path)
             .ok_or_else(|| anyhow::anyhow!("No parser found for file: {}", path.display()))?;
 
-        let content = std::fs::read_to_string(path)
+        let content = std::fs::read(path)
             .map_err(|e| anyhow::anyhow!("Failed to read file {}: {}", path.display(), e))?;
 
         parser.parse(&content)
@@ -86,13 +89,17 @@ impl ParserRegistry {
         &self,
         path: &Path,
         blocks: &[TranslationBlock],
-        template: &str,
+        template_path: &Path,
     ) -> Result<()> {
         let parser = self
             .get_parser(path)
             .ok_or_else(|| anyhow::anyhow!("No parser found for file: {}", path.display()))?;
 
-        let output = parser.serialize(blocks, template)?;
+        // Read template file as bytes
+        let template = std::fs::read(template_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read template file {}: {}", template_path.display(), e))?;
+
+        let output = parser.serialize(blocks, &template)?;
         std::fs::write(path, output)
             .map_err(|e| anyhow::anyhow!("Failed to write file {}: {}", path.display(), e))?;
 

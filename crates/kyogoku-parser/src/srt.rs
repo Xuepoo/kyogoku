@@ -12,13 +12,14 @@ impl Parser for SrtParser {
         &["srt"]
     }
 
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>> {
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>> {
+        let content_str = std::str::from_utf8(content)?;
         let mut blocks = Vec::new();
-        let mut lines = content.lines().peekable();
+        let mut lines = content_str.lines().peekable();
 
         while lines.peek().is_some() {
             // Skip empty lines
-            while lines.peek().map(|l| l.trim().is_empty()).unwrap_or(false) {
+            while lines.peek().is_some_and(|l| l.trim().is_empty()) {
                 lines.next();
             }
 
@@ -42,7 +43,11 @@ impl Parser for SrtParser {
                     lines.next();
                     break;
                 }
-                text_lines.push(lines.next().unwrap().to_string());
+                if let Some(l) = lines.next() {
+                    text_lines.push(l.to_string());
+                } else {
+                    break;
+                }
             }
 
             let text = text_lines.join("\n");
@@ -57,7 +62,7 @@ impl Parser for SrtParser {
         Ok(blocks)
     }
 
-    fn serialize(&self, blocks: &[TranslationBlock], _template: &str) -> Result<String> {
+    fn serialize(&self, blocks: &[TranslationBlock], _template: &[u8]) -> Result<Vec<u8>> {
         let mut output = String::new();
 
         for (idx, block) in blocks.iter().enumerate() {
@@ -75,7 +80,7 @@ impl Parser for SrtParser {
             output.push_str("\n\n");
         }
 
-        Ok(output.trim_end().to_string())
+        Ok(output.trim_end().as_bytes().to_vec())
     }
 }
 
@@ -83,7 +88,7 @@ impl Parser for SrtParser {
 mod tests {
     use super::*;
 
-    const SAMPLE_SRT: &str = r#"1
+    const SAMPLE_SRT: &[u8] = b"1
 00:00:01,000 --> 00:00:04,000
 Hello, world!
 
@@ -95,7 +100,7 @@ This is a test.
 00:00:09,000 --> 00:00:12,000
 Multi-line
 subtitle text
-"#;
+";
 
     #[test]
     fn test_srt_parse() {
@@ -117,9 +122,10 @@ subtitle text
         ];
 
         let parser = SrtParser;
-        let output = parser.serialize(&blocks, "").unwrap();
+        let output = parser.serialize(&blocks, b"").unwrap();
+        let output_str = std::str::from_utf8(&output).unwrap();
 
-        assert!(output.contains("你好"));
-        assert!(output.contains("00:00:01,000"));
+        assert!(output_str.contains("你好"));
+        assert!(output_str.contains("00:00:01,000"));
     }
 }

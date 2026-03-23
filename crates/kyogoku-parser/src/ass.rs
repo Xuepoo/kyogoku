@@ -145,12 +145,13 @@ impl Parser for AssParser {
         &["ass", "ssa"]
     }
 
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>> {
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>> {
+        let content_str = std::str::from_utf8(content)?;
         let mut blocks = Vec::new();
         let mut in_events = false;
         let mut dialogue_index = 0u32;
 
-        for line in content.lines() {
+        for line in content_str.lines() {
             let line = line.trim();
 
             // Check for section headers
@@ -206,7 +207,8 @@ impl Parser for AssParser {
         Ok(blocks)
     }
 
-    fn serialize(&self, blocks: &[TranslationBlock], template: &str) -> Result<String> {
+    fn serialize(&self, blocks: &[TranslationBlock], template: &[u8]) -> Result<Vec<u8>> {
+        let template_str = std::str::from_utf8(template)?;
         // If template is provided, use it as base
         let mut output = if template.is_empty() {
             // Generate minimal ASS header
@@ -227,7 +229,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             let mut result = String::new();
             let mut in_events = false;
 
-            for line in template.lines() {
+            for line in template_str.lines() {
                 let trimmed = line.trim();
 
                 if trimmed.starts_with('[') && trimmed.ends_with(']') {
@@ -316,7 +318,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             ));
         }
 
-        Ok(output)
+        Ok(output.into_bytes())
     }
 }
 
@@ -324,7 +326,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 mod tests {
     use super::*;
 
-    const SAMPLE_ASS: &str = r#"[Script Info]
+    const SAMPLE_ASS: &[u8] = b"[Script Info]
 ScriptType: v4.00+
 PlayResX: 1920
 PlayResY: 1080
@@ -336,9 +338,9 @@ Style: Default,Arial,48,&H00FFFFFF
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,Hello, world!
-Dialogue: 0,0:00:05.00,0:00:08.00,Default,Speaker,0,0,0,,{\b1}Bold text{\b0} normal
-Dialogue: 0,0:00:09.00,0:00:12.00,Default,,0,0,0,,Line one\NLine two
-"#;
+Dialogue: 0,0:00:05.00,0:00:08.00,Default,Speaker,0,0,0,,{\\b1}Bold text{\\b0} normal
+Dialogue: 0,0:00:09.00,0:00:12.00,Default,,0,0,0,,Line one\\NLine two
+";
 
     #[test]
     fn test_parse_timestamp() {
@@ -389,12 +391,13 @@ Dialogue: 0,0:00:09.00,0:00:12.00,Default,,0,0,0,,Line one\NLine two
         ];
 
         let parser = AssParser;
-        let output = parser.serialize(&blocks, "").unwrap();
+        let output = parser.serialize(&blocks, b"").unwrap();
+        let output_str = std::str::from_utf8(&output).unwrap();
 
-        assert!(output.contains("[Script Info]"));
-        assert!(output.contains("[Events]"));
-        assert!(output.contains("Dialogue:"));
-        assert!(output.contains("你好"));
+        assert!(output_str.contains("[Script Info]"));
+        assert!(output_str.contains("[Events]"));
+        assert!(output_str.contains("Dialogue:"));
+        assert!(output_str.contains("你好"));
     }
 
     #[test]
