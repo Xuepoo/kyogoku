@@ -3,7 +3,7 @@ members = [
     "crates/kyogoku-core",
     "crates/kyogoku-parser",
     "crates/kyogoku-cli",
-    # "crates/kyogoku-gui/src-tauri",
+    "crates/kyogoku-gui/src-tauri",
 ]
 resolver = "2"
 
