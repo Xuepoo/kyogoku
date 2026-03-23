@@ -12,8 +12,9 @@ impl Parser for JsonParser {
         &["json"]
     }
 
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>> {
-        let json: Value = serde_json::from_str(content).context("Failed to parse JSON")?;
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>> {
+        let content_str = std::str::from_utf8(content)?;
+        let json: Value = serde_json::from_str(content_str).context("Failed to parse JSON")?;
 
         let blocks = match json {
             Value::Object(map) => parse_object(&map),
@@ -25,9 +26,10 @@ impl Parser for JsonParser {
         Ok(blocks)
     }
 
-    fn serialize(&self, blocks: &[TranslationBlock], template: &str) -> Result<String> {
+    fn serialize(&self, blocks: &[TranslationBlock], template: &[u8]) -> Result<Vec<u8>> {
+        let template_str = std::str::from_utf8(template)?;
         let json: Value =
-            serde_json::from_str(template).context("Failed to parse template JSON")?;
+            serde_json::from_str(template_str).context("Failed to parse template JSON")?;
 
         let output = match json {
             Value::Object(map) => write_object(map, blocks),
@@ -35,7 +37,8 @@ impl Parser for JsonParser {
             other => other,
         };
 
-        serde_json::to_string_pretty(&output).context("Failed to serialize JSON")
+        let output_str = serde_json::to_string_pretty(&output).context("Failed to serialize JSON")?;
+        Ok(output_str.into_bytes())
     }
 }
 
@@ -193,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_json_simple_object() {
-        let content = r#"{ "hello": "Hello", "world": "World" }"#;
+        let content = r#"{ "hello": "Hello", "world": "World" }"#.as_bytes();
         let parser = JsonParser;
         let blocks = parser.parse(content).unwrap();
 
@@ -205,7 +208,7 @@ mod tests {
         let content = r#"{
             "line1": { "original": "Hello", "translation": "" },
             "line2": { "original": "World", "translation": "世界" }
-        }"#;
+        }"#.as_bytes();
 
         let parser = JsonParser;
         let blocks = parser.parse(content).unwrap();
@@ -217,11 +220,12 @@ mod tests {
 
     #[test]
     fn test_json_serialize() {
-        let template = r#"{ "hello": "Hello" }"#;
+        let template = r#"{ "hello": "Hello" }"#.as_bytes();
         let mut blocks = JsonParser.parse(template).unwrap();
         blocks[0] = blocks[0].clone().with_target("你好");
 
         let output = JsonParser.serialize(&blocks, template).unwrap();
-        assert!(output.contains("你好"));
+        let output_str = std::str::from_utf8(&output).unwrap();
+        assert!(output_str.contains("你好"));
     }
 }

@@ -7,7 +7,7 @@ use kyogoku_parser::{ParserRegistry, TranslationBlock};
 /// Test SRT parser with standard subtitle file
 #[test]
 fn test_srt_standard() {
-    let content = include_str!("fixtures/subtitles/standard.srt");
+    let content = include_bytes!("fixtures/subtitles/standard.srt");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.srt"))
@@ -24,14 +24,15 @@ fn test_srt_standard() {
     let output = parser
         .serialize(&blocks, content)
         .expect("Failed to serialize");
-    assert!(output.contains("00:00:01,000"));
-    assert!(output.contains("lazy dog"));
+    let output_str = std::str::from_utf8(&output).expect("Invalid UTF-8 output");
+    assert!(output_str.contains("00:00:01,000"));
+    assert!(output_str.contains("lazy dog"));
 }
 
 /// Test ASS parser with complex effects and tags
 #[test]
 fn test_ass_with_effects() {
-    let content = include_str!("fixtures/subtitles/effect_tags.ass");
+    let content = include_bytes!("fixtures/subtitles/effect_tags.ass");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.ass"))
@@ -54,15 +55,16 @@ fn test_ass_with_effects() {
     let output = parser
         .serialize(&blocks, content)
         .expect("Failed to serialize");
-    assert!(output.contains("[Script Info]"));
-    assert!(output.contains("[Events]"));
-    assert!(output.contains("Dialogue:"));
+    let output_str = std::str::from_utf8(&output).expect("Invalid UTF-8 output");
+    assert!(output_str.contains("[Script Info]"));
+    assert!(output_str.contains("[Events]"));
+    assert!(output_str.contains("Dialogue:"));
 }
 
 /// Test JSON parser with MTool export format
 #[test]
 fn test_json_mtool_format() {
-    let content = include_str!("fixtures/games/mtool_export.json");
+    let content = include_bytes!("fixtures/games/mtool_export.json");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.json"))
@@ -85,7 +87,7 @@ fn test_json_mtool_format() {
     let output = parser
         .serialize(&blocks, content)
         .expect("Failed to serialize");
-    let reparsed: serde_json::Value = serde_json::from_str(&output).expect("Invalid JSON");
+    let reparsed: serde_json::Value = serde_json::from_slice(&output).expect("Invalid JSON");
     assert!(reparsed.is_object());
 }
 
@@ -101,7 +103,7 @@ Hello, world!
 2
 00:00:05.000 --> 00:00:08.000 align:start
 This is <b>styled</b> text.
-"#;
+"#.as_bytes();
 
     let registry = ParserRegistry::new();
     let parser = registry
@@ -118,7 +120,7 @@ This is <b>styled</b> text.
 /// Test TXT parser with simple line-by-line content
 #[test]
 fn test_txt_basic() {
-    let content = "Line one\nLine two\nLine three\n";
+    let content = "Line one\nLine two\nLine three\n".as_bytes();
 
     let registry = ParserRegistry::new();
     let parser = registry
@@ -136,13 +138,13 @@ fn test_txt_basic() {
     let output = parser
         .serialize(&blocks, content)
         .expect("Failed to serialize");
-    assert_eq!(output, content.trim());
+    assert_eq!(output, "Line one\nLine two\nLine three".as_bytes());
 }
 
 /// Test edge case: empty file
 #[test]
 fn test_empty_file() {
-    let content = include_str!("fixtures/safety/empty_file.txt");
+    let content = include_bytes!("fixtures/safety/empty_file.txt");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.txt"))
@@ -155,7 +157,7 @@ fn test_empty_file() {
 /// Test edge case: UTF-8 BOM
 #[test]
 fn test_utf8_bom() {
-    let content = include_str!("fixtures/safety/utf8_bom.txt");
+    let content = include_bytes!("fixtures/safety/utf8_bom.txt");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.txt"))
@@ -178,7 +180,7 @@ fn test_utf8_bom() {
 /// Test malformed JSON error handling
 #[test]
 fn test_malformed_json() {
-    let content = include_str!("fixtures/safety/malformed_json.json");
+    let content = include_bytes!("fixtures/safety/malformed_json.json");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.json"))
@@ -264,7 +266,7 @@ fn test_block_with_speaker() {
 /// Snapshot test: Verify JSON parsing structure
 #[test]
 fn test_json_snapshot() {
-    let content = include_str!("fixtures/games/mtool_export.json");
+    let content = include_bytes!("fixtures/games/mtool_export.json");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.json"))
@@ -279,7 +281,7 @@ fn test_json_snapshot() {
 /// Snapshot test: Verify ASS parsing structure
 #[test]
 fn test_ass_snapshot() {
-    let content = include_str!("fixtures/subtitles/effect_tags.ass");
+    let content = include_bytes!("fixtures/subtitles/effect_tags.ass");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.ass"))
@@ -294,7 +296,7 @@ fn test_ass_snapshot() {
 /// Test Ren'Py parser with basic dialogue
 #[test]
 fn test_rpy_basic() {
-    let content = include_str!("fixtures/games/basic_dialogue.rpy");
+    let content = include_bytes!("fixtures/games/basic_dialogue.rpy");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.rpy"))
@@ -338,13 +340,14 @@ fn test_rpy_basic() {
     let output = parser
         .serialize(&translated_blocks, content)
         .expect("Failed to serialize");
-    assert!(output.contains("\"这是一个故事。\":"));
+    let output_str = std::str::from_utf8(&output).expect("Invalid UTF-8 output");
+    assert!(output_str.contains("\"这是一个故事。\":"));
 }
 
 /// Snapshot test: Verify Ren'Py parsing structure
 #[test]
 fn test_rpy_snapshot() {
-    let content = include_str!("fixtures/games/basic_dialogue.rpy");
+    let content = include_bytes!("fixtures/games/basic_dialogue.rpy");
     let registry = ParserRegistry::new();
     let parser = registry
         .get_parser(std::path::Path::new("test.rpy"))

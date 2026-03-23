@@ -43,29 +43,17 @@ expression: blocks
         },
     },
     TranslationBlock {
-        id: "520666427bfbf37af8eaf4d953ac4fac7a8c19a40077028cea88e5714ed34313",
+        id: "e1a2a83511bc3c53c10c5d024388cf4f5de3f4554e589414830132b0250a6459",
         speaker: Some(
             "",
         ),
-        source: "\"",
+        source: "This is a multiline string\nspanning multiple lines.",
         target: None,
         metadata: Object {
-            "line": Number(16),
-            "quote": String("\""),
-            "type": String("dialogue"),
-        },
-    },
-    TranslationBlock {
-        id: "520666427bfbf37af8eaf4d953ac4fac7a8c19a40077028cea88e5714ed34313",
-        speaker: Some(
-            "",
-        ),
-        source: "\"",
-        target: None,
-        metadata: Object {
-            "line": Number(19),
-            "quote": String("\""),
-            "type": String("dialogue"),
+            "line_end": Number(19),
+            "line_start": Number(16),
+            "quote": String("\"\"\""),
+            "type": String("multiline_dialogue"),
         },
     },
     TranslationBlock {

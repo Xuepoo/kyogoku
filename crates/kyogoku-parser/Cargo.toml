@@ -9,8 +9,25 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 blake3 = { workspace = true }
-nom = "8"
+zip = { workspace = true, optional = true }
+quick-xml = { workspace = true, optional = true }
+regex = { workspace = true, optional = true }
+
+[features]
+default = ["rpy", "srt", "ass", "vtt", "json", "txt", "epub"]
+rpy = []
+srt = []
+ass = []
+vtt = []
+json = []
+txt = []
+epub = ["dep:zip", "dep:quick-xml", "dep:regex"]
 
 [dev-dependencies]
 tempfile = "3.10"
 insta = "1.41"
+criterion = "0.5"
+
+[[bench]]
+name = "parser_bench"
+harness = false
