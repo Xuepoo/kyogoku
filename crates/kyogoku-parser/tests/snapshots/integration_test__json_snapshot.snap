@@ -1,0 +1,80 @@
+---
+source: crates/kyogoku-parser/tests/integration_test.rs
+expression: blocks
+---
+[
+    TranslationBlock {
+        id: "eb7ef50573c20ce46f44874fc72456b317bf882cec4ba32471e1fcebcaf58869",
+        speaker: None,
+        source: "Welcome to the game!",
+        target: None,
+        metadata: Object {
+            "format": String("simple"),
+            "key": String("0001"),
+        },
+    },
+    TranslationBlock {
+        id: "2f968a50a163a8daf245bd5945ea2209367b60fc2932db97baff497baabfd52e",
+        speaker: None,
+        source: "What is your name?",
+        target: None,
+        metadata: Object {
+            "format": String("simple"),
+            "key": String("0002"),
+        },
+    },
+    TranslationBlock {
+        id: "11892020f4b1cea8963083460c8ae3de97e4320fd2c3528544c487e069256f42",
+        speaker: None,
+        source: "Nice to meet you, {player_name}.",
+        target: None,
+        metadata: Object {
+            "format": String("simple"),
+            "key": String("0003"),
+        },
+    },
+    TranslationBlock {
+        id: "df3ff4873b1748fbb046a2389416b92706e8856b2a36d9dec3f68f02104d2738",
+        speaker: None,
+        source: "Item description one",
+        target: None,
+        metadata: Object {
+            "format": String("array"),
+            "index": Number(0),
+        },
+    },
+    TranslationBlock {
+        id: "1c683c1342c55f201d9eeea98f8ba63627d8ab00b8026101ae260a91894cf929",
+        speaker: None,
+        source: "Item description two",
+        target: None,
+        metadata: Object {
+            "format": String("array"),
+            "index": Number(1),
+        },
+    },
+    TranslationBlock {
+        id: "80844a6c10e6ea19f2ff1db5e012130f44f7a3d50e1fbfb198563eaa80ad20a7",
+        speaker: Some(
+            "Alice",
+        ),
+        source: "Hello there!",
+        target: None,
+        metadata: Object {
+            "format": String("dialogue"),
+            "index": Number(0),
+        },
+    },
+    TranslationBlock {
+        id: "75ca601284c044072f4b8876fadf10bf12eb6ade87f4b54813e67af1546066c5",
+        speaker: Some(
+            "Bob",
+        ),
+        source: "How are you?",
+        target: None,
+        metadata: Object {
+            "format": String("dialogue"),
+            "index": Number(1),
+        },
+    },
+]
