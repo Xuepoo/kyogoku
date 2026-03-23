@@ -6,7 +6,7 @@ pub async fn run() -> Result<()> {
     config.save()?;
 
     println!("✓ Configuration initialized");
-    
+
     if let Some(path) = Config::config_path() {
         println!("  Config file: {}", path.display());
     }

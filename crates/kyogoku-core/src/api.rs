@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{ApiConfig, ApiProvider};
@@ -95,10 +95,7 @@ impl ApiClient {
             }
         }
 
-        let response = req
-            .send()
-            .await
-            .context("Failed to send request to API")?;
+        let response = req.send().await.context("Failed to send request to API")?;
 
         let status = response.status();
         if !status.is_success() {

@@ -26,8 +26,7 @@ pub async fn run(
 
     // Setup output directory
     let output_dir = output.unwrap_or_else(|| PathBuf::from("output"));
-    std::fs::create_dir_all(&output_dir)
-        .context("Failed to create output directory")?;
+    std::fs::create_dir_all(&output_dir).context("Failed to create output directory")?;
 
     // Initialize parser registry
     let registry = ParserRegistry::new();
@@ -36,19 +35,19 @@ pub async fn run(
     let mut engine = TranslationEngine::new(config.clone())?;
 
     // Setup cache
-    if !no_cache
-        && let Ok(cache) = TranslationCache::open_default() {
-            engine = engine.with_cache(cache);
-            tracing::info!("Translation cache enabled");
-        }
+    if !no_cache && let Ok(cache) = TranslationCache::open_default() {
+        engine = engine.with_cache(cache);
+        tracing::info!("Translation cache enabled");
+    }
 
     // Load glossary
     let glossary_path = glossary_path.or(config.project.glossary_path.clone());
     if let Some(ref path) = glossary_path
-        && path.exists() {
-            let glossary = Glossary::load(path)?;
-            engine = engine.with_glossary(glossary);
-        }
+        && path.exists()
+    {
+        let glossary = Glossary::load(path)?;
+        engine = engine.with_glossary(glossary);
+    }
 
     // Collect files to translate
     let files = collect_files(&input, &registry)?;
@@ -60,7 +59,10 @@ pub async fn run(
     }
 
     println!("Found {} file(s) to translate", files.len());
-    println!("  {} → {}", config.project.source_lang, config.project.target_lang);
+    println!(
+        "  {} → {}",
+        config.project.source_lang, config.project.target_lang
+    );
 
     // Process each file
     for file_path in &files {
@@ -71,7 +73,11 @@ pub async fn run(
         let mut blocks = registry.parse_file(file_path)?;
 
         let needs_translation = blocks.iter().filter(|b| b.needs_translation()).count();
-        println!("  {} blocks ({} need translation)", blocks.len(), needs_translation);
+        println!(
+            "  {} blocks ({} need translation)",
+            blocks.len(),
+            needs_translation
+        );
 
         if needs_translation == 0 {
             println!("  Skipping (all translated)");

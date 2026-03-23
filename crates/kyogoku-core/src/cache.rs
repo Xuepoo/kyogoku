@@ -20,8 +20,7 @@ impl TranslationCache {
     }
 
     pub fn open_default() -> Result<Self> {
-        let path = Config::cache_path()
-            .context("Could not determine cache directory")?;
+        let path = Config::cache_path().context("Could not determine cache directory")?;
 
         std::fs::create_dir_all(&path)
             .with_context(|| format!("Failed to create cache directory {}", path.display()))?;

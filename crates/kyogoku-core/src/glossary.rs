@@ -35,14 +35,18 @@ impl Glossary {
             glossary.add(entry);
         }
 
-        tracing::info!("Loaded {} glossary entries from {}", glossary.len(), path.display());
+        tracing::info!(
+            "Loaded {} glossary entries from {}",
+            glossary.len(),
+            path.display()
+        );
         Ok(glossary)
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
         let entries: Vec<&GlossaryEntry> = self.entries.values().collect();
-        let content = serde_json::to_string_pretty(&entries)
-            .context("Failed to serialize glossary")?;
+        let content =
+            serde_json::to_string_pretty(&entries).context("Failed to serialize glossary")?;
 
         std::fs::write(path, content)
             .with_context(|| format!("Failed to write glossary to {}", path.display()))?;
@@ -97,7 +101,7 @@ mod tests {
     #[test]
     fn test_glossary() {
         let mut glossary = Glossary::new();
-        
+
         glossary.add(GlossaryEntry {
             source: "田中".to_string(),
             target: "田中".to_string(),
@@ -111,7 +115,7 @@ mod tests {
     #[test]
     fn test_find_matches() {
         let mut glossary = Glossary::new();
-        
+
         glossary.add(GlossaryEntry {
             source: "勇者".to_string(),
             target: "勇者".to_string(),

@@ -21,11 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Parses cue timing and settings (align, position, etc.)
   * Strips HTML-like formatting tags
   * Supports optional cue identifiers
-- Integration test example (`examples/test_parsers.rs`)
 
 ### Changed
 - Added nom 8.0 dependency for advanced parsing capabilities
-- Updated README and documentation to list 7 supported file extensions
+- Updated README and documentation to list 8 supported file extensions (txt, srt, json, ass, ssa, vtt, webvtt, rpy)
 
 ### Planned
 - Tauri 2.0 GUI application

@@ -46,26 +46,30 @@ impl TranslationEngine {
     pub async fn translate_block(&self, block: &TranslationBlock) -> Result<String> {
         // Check cache first
         if let Some(ref cache) = self.cache
-            && let Some(cached) = cache.get(&block.id) {
-                tracing::debug!("Cache hit for block {}", block.id);
-                return Ok(cached);
-            }
+            && let Some(cached) = cache.get(&block.id)
+        {
+            tracing::debug!("Cache hit for block {}", block.id);
+            return Ok(cached);
+        }
 
         // Build prompt
         let prompt = self.build_prompt(block);
 
         // Call API
         let _permit = self.semaphore.acquire().await.unwrap();
-        let translation = self.client.chat(vec![
-            ChatMessage {
-                role: "system".to_string(),
-                content: self.system_prompt(),
-            },
-            ChatMessage {
-                role: "user".to_string(),
-                content: prompt,
-            },
-        ]).await?;
+        let translation = self
+            .client
+            .chat(vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: self.system_prompt(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt,
+                },
+            ])
+            .await?;
 
         // Store in cache
         if let Some(ref cache) = self.cache {
@@ -101,7 +105,9 @@ impl TranslationEngine {
             }
 
             // Translate with context
-            let translation = self.translate_block_with_context(block, &context_window).await?;
+            let translation = self
+                .translate_block_with_context(block, &context_window)
+                .await?;
             block.target = Some(translation.clone());
 
             // Update context window
@@ -124,26 +130,30 @@ impl TranslationEngine {
     ) -> Result<String> {
         // Check cache first
         if let Some(ref cache) = self.cache
-            && let Some(cached) = cache.get(&block.id) {
-                tracing::debug!("Cache hit for block {}", block.id);
-                return Ok(cached);
-            }
+            && let Some(cached) = cache.get(&block.id)
+        {
+            tracing::debug!("Cache hit for block {}", block.id);
+            return Ok(cached);
+        }
 
         // Build prompt with context
         let prompt = self.build_prompt_with_context(block, context);
 
         // Call API
         let _permit = self.semaphore.acquire().await.unwrap();
-        let translation = self.client.chat(vec![
-            ChatMessage {
-                role: "system".to_string(),
-                content: self.system_prompt(),
-            },
-            ChatMessage {
-                role: "user".to_string(),
-                content: prompt,
-            },
-        ]).await?;
+        let translation = self
+            .client
+            .chat(vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: self.system_prompt(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt,
+                },
+            ])
+            .await?;
 
         // Store in cache
         if let Some(ref cache) = self.cache {
@@ -170,9 +180,7 @@ impl TranslationEngine {
 - 保留所有特殊标记和控制符
 - 人名、地名等专有名词参考术语表
 - 只输出译文，不要添加任何解释"#,
-            self.config.project.source_lang,
-            self.config.project.target_lang,
-            style
+            self.config.project.source_lang, self.config.project.target_lang, style
         )
     }
 
@@ -181,10 +189,11 @@ impl TranslationEngine {
 
         // Add glossary if available
         if let Some(ref glossary) = self.glossary
-            && let Some(glossary_text) = glossary.format_for_prompt(&block.source) {
-                prompt.push_str(&glossary_text);
-                prompt.push_str("\n\n");
-            }
+            && let Some(glossary_text) = glossary.format_for_prompt(&block.source)
+        {
+            prompt.push_str(&glossary_text);
+            prompt.push_str("\n\n");
+        }
 
         // Add speaker context if available
         if let Some(ref speaker) = block.speaker {
@@ -205,10 +214,11 @@ impl TranslationEngine {
 
         // Add glossary if available
         if let Some(ref glossary) = self.glossary
-            && let Some(glossary_text) = glossary.format_for_prompt(&block.source) {
-                prompt.push_str(&glossary_text);
-                prompt.push_str("\n\n");
-            }
+            && let Some(glossary_text) = glossary.format_for_prompt(&block.source)
+        {
+            prompt.push_str(&glossary_text);
+            prompt.push_str("\n\n");
+        }
 
         // Add context window
         if !context.is_empty() {

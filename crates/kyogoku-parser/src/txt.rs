@@ -18,8 +18,7 @@ impl Parser for TxtParser {
             .enumerate()
             .filter(|(_, line)| !line.trim().is_empty())
             .map(|(idx, line)| {
-                TranslationBlock::new(line)
-                    .with_metadata(json!({ "line": idx + 1 }))
+                TranslationBlock::new(line).with_metadata(json!({ "line": idx + 1 }))
             })
             .collect();
 
@@ -71,10 +70,10 @@ mod tests {
     fn test_txt_roundtrip() {
         let content = "Line 1\nLine 2\nLine 3";
         let parser = TxtParser;
-        
+
         let blocks = parser.parse(content).unwrap();
         let output = parser.serialize(&blocks, content).unwrap();
-        
+
         assert_eq!(output, content);
     }
 }
