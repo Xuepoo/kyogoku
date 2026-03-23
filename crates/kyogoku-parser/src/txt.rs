@@ -12,8 +12,9 @@ impl Parser for TxtParser {
         &["txt"]
     }
 
-    fn parse(&self, content: &str) -> Result<Vec<TranslationBlock>> {
-        let blocks: Vec<TranslationBlock> = content
+    fn parse(&self, content: &[u8]) -> Result<Vec<TranslationBlock>> {
+        let content_str = std::str::from_utf8(content)?;
+        let blocks: Vec<TranslationBlock> = content_str
             .lines()
             .enumerate()
             .filter(|(_, line)| !line.trim().is_empty())
@@ -26,14 +27,14 @@ impl Parser for TxtParser {
         Ok(blocks)
     }
 
-    fn serialize(&self, blocks: &[TranslationBlock], _template: &str) -> Result<String> {
+    fn serialize(&self, blocks: &[TranslationBlock], _template: &[u8]) -> Result<Vec<u8>> {
         let output: String = blocks
             .iter()
             .map(|block| block.output())
             .collect::<Vec<_>>()
             .join("\n");
 
-        Ok(output)
+        Ok(output.into_bytes())
     }
 }
 
@@ -43,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_txt_parse() {
-        let content = "Hello\nWorld\n\nTest";
+        let content = b"Hello\nWorld\n\nTest";
         let parser = TxtParser;
         let blocks = parser.parse(content).unwrap();
 
@@ -61,14 +62,14 @@ mod tests {
         ];
 
         let parser = TxtParser;
-        let output = parser.serialize(&blocks, "").unwrap();
+        let output = parser.serialize(&blocks, b"").unwrap();
 
-        assert_eq!(output, "你好\n世界");
+        assert_eq!(output, "你好\n世界".as_bytes());
     }
 
     #[test]
     fn test_txt_roundtrip() {
-        let content = "Line 1\nLine 2\nLine 3";
+        let content = b"Line 1\nLine 2\nLine 3";
         let parser = TxtParser;
 
         let blocks = parser.parse(content).unwrap();
