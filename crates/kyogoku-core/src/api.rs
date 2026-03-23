@@ -51,7 +51,10 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
-    pub fn new(config: ApiConfig) -> Result<Self> {
+    pub fn new(mut config: ApiConfig) -> Result<Self> {
+        // Resolve API key from environment if needed
+        config.api_key = config.resolve_api_key();
+        
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()

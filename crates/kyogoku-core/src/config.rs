@@ -86,7 +86,11 @@ impl ApiConfig {
                     ApiProvider::Google => "GOOGLE_API_KEY",
                     _ => "API_KEY",
                 };
-                std::env::var(env_var).ok()
+                // Try provider-specific first, then fallback to common alternatives
+                std::env::var(env_var)
+                    .or_else(|_| std::env::var("OPENROUTER_API_KEY"))
+                    .or_else(|_| std::env::var("LLM_API_KEY"))
+                    .ok()
             }
             other => other.clone(),
         }
