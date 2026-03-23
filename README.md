@@ -10,7 +10,7 @@ Kyogoku (京极) derives its name from "驱邪" (exorcism), aiming to banish the
 
 ## ✨ Features
 
-- **Multi-format Support**: TXT, SRT subtitles, JSON (MTool format)
+- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT subtitles, JSON (MTool format)
 - **Intelligent Caching**: Blake3 content hashing with sled KV store for incremental translation
 - **Context Window**: Maintains translation consistency with sliding window of previous translations
 - **Glossary System**: Custom terminology enforcement for character names, locations, etc.
