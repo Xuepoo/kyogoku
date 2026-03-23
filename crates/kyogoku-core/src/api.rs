@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 use crate::config::{ApiConfig, ApiProvider};
 
@@ -48,19 +49,30 @@ pub struct Usage {
 pub struct ApiClient {
     client: reqwest::Client,
     config: ApiConfig,
+    max_retries: u32,
 }
 
 impl ApiClient {
     pub fn new(mut config: ApiConfig) -> Result<Self> {
         // Resolve API key from environment if needed
         config.api_key = config.resolve_api_key();
-        
+
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(Duration::from_secs(120))
             .build()
             .context("Failed to create HTTP client")?;
 
-        Ok(Self { client, config })
+        Ok(Self {
+            client,
+            config,
+            max_retries: 3,
+        })
+    }
+
+    /// Set maximum retry attempts (default: 3)
+    pub fn with_max_retries(mut self, retries: u32) -> Self {
+        self.max_retries = retries;
+        self
     }
 
     pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
@@ -71,13 +83,41 @@ impl ApiClient {
             temperature: Some(self.config.temperature),
         };
 
-        let response = self.send_request(&request).await?;
+        let response = self.send_request_with_retry(&request).await?;
 
         response
             .choices
             .first()
             .and_then(|c| c.message.content.clone())
             .context("No response content from API")
+    }
+
+    async fn send_request_with_retry(&self, request: &ChatRequest) -> Result<ChatResponse> {
+        let mut attempt = 0u32;
+        let max_retries = self.max_retries;
+
+        loop {
+            attempt += 1;
+            match self.send_request(request).await {
+                Ok(response) => return Ok(response),
+                Err(e) => {
+                    let err_str = e.to_string();
+                    if is_retryable_error(&err_str) && attempt <= max_retries {
+                        let delay = exponential_backoff_delay(attempt);
+                        tracing::warn!(
+                            "API request failed (attempt {}/{}): {}. Retrying in {:?}...",
+                            attempt,
+                            max_retries,
+                            err_str,
+                            delay
+                        );
+                        tokio::time::sleep(delay).await;
+                    } else {
+                        return Err(e);
+                    }
+                }
+            }
+        }
     }
 
     async fn send_request(&self, request: &ChatRequest) -> Result<ChatResponse> {
@@ -121,6 +161,34 @@ impl ApiClient {
         self.chat(messages).await?;
         Ok(())
     }
+}
+
+/// Check if an error is retryable (rate limit, server error, timeout)
+fn is_retryable_error(err: &str) -> bool {
+    let retryable_patterns = [
+        "status 429",     // Rate limit
+        "status 500",     // Internal server error
+        "status 502",     // Bad gateway
+        "status 503",     // Service unavailable
+        "status 504",     // Gateway timeout
+        "timeout",        // Request timeout
+        "connection",     // Connection errors
+        "ETIMEDOUT",      // Network timeout
+        "ECONNRESET",     // Connection reset
+        "ECONNREFUSED",   // Connection refused
+        "temporarily",    // Temporary errors
+        "overloaded",     // Server overloaded
+    ];
+
+    let err_lower = err.to_lowercase();
+    retryable_patterns.iter().any(|p| err_lower.contains(&p.to_lowercase()))
+}
+
+/// Calculate exponential backoff delay: 500ms, 1s, 2s, 4s, ... capped at 30s
+fn exponential_backoff_delay(attempt: u32) -> Duration {
+    let base_ms = 500u64;
+    let delay_ms = base_ms * 2u64.pow(attempt.saturating_sub(1));
+    Duration::from_millis(delay_ms.min(30_000))
 }
 
 #[cfg(test)]
@@ -187,9 +255,10 @@ mod tests {
     #[tokio::test]
     async fn test_chat_api_error_surface() {
         let server = MockServer::start().await;
+        // Use status 401 (Unauthorized) which is not retryable
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(ResponseTemplate::new(500).set_body_string("internal error"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("unauthorized"))
             .expect(1)
             .mount(&server)
             .await;
@@ -200,7 +269,7 @@ mod tests {
             model: "mock-model".to_string(),
             ..ApiConfig::default()
         };
-        let client = ApiClient::new(config).unwrap();
+        let client = ApiClient::new(config).unwrap().with_max_retries(0);
 
         let err = client
             .chat(vec![ChatMessage {
@@ -212,7 +281,7 @@ mod tests {
 
         let msg = err.to_string();
         assert!(msg.contains("API request failed with status"));
-        assert!(msg.contains("internal error"));
+        assert!(msg.contains("unauthorized"));
     }
 
     #[tokio::test]
@@ -248,5 +317,72 @@ mod tests {
             .await
             .unwrap_err();
         assert!(err.to_string().contains("No response content from API"));
+    }
+
+    #[tokio::test]
+    async fn test_retry_on_server_error() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use std::sync::Arc;
+        
+        let server = MockServer::start().await;
+        let call_count = Arc::new(AtomicU32::new(0));
+        let call_count_clone = call_count.clone();
+
+        // Fail first 2 attempts, succeed on 3rd
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(move |_: &wiremock::Request| {
+                let count = call_count_clone.fetch_add(1, Ordering::SeqCst);
+                if count < 2 {
+                    ResponseTemplate::new(503).set_body_string("service unavailable")
+                } else {
+                    ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                        "id": "chatcmpl-test",
+                        "choices": [{
+                            "message": {"role": "assistant", "content": "success"},
+                            "finish_reason": "stop"
+                        }],
+                        "usage": {"prompt_tokens": 2, "completion_tokens": 1, "total_tokens": 3}
+                    }))
+                }
+            })
+            .mount(&server)
+            .await;
+
+        let config = ApiConfig {
+            api_base: Some(format!("{}/v1", server.uri())),
+            api_key: Some("test-key".to_string()),
+            model: "mock-model".to_string(),
+            ..ApiConfig::default()
+        };
+        let client = ApiClient::new(config).unwrap().with_max_retries(3);
+
+        let response = client
+            .chat(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "hello".to_string(),
+            }])
+            .await
+            .unwrap();
+
+        assert_eq!(response, "success");
+        assert_eq!(call_count.load(Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn test_is_retryable_error() {
+        assert!(is_retryable_error("status 429: rate limit"));
+        assert!(is_retryable_error("API request failed with status 503"));
+        assert!(is_retryable_error("connection timeout"));
+        assert!(!is_retryable_error("status 401: unauthorized"));
+        assert!(!is_retryable_error("invalid JSON"));
+    }
+
+    #[test]
+    fn test_exponential_backoff_delay() {
+        assert_eq!(exponential_backoff_delay(1), Duration::from_millis(500));
+        assert_eq!(exponential_backoff_delay(2), Duration::from_millis(1000));
+        assert_eq!(exponential_backoff_delay(3), Duration::from_millis(2000));
+        assert_eq!(exponential_backoff_delay(10), Duration::from_secs(30)); // Capped at 30s
     }
 }

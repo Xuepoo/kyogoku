@@ -1,6 +1,7 @@
 pub mod ass;
 pub mod block;
 pub mod json;
+pub mod md;
 pub mod parser;
 pub mod rpy;
 pub mod srt;

@@ -55,6 +55,18 @@ enum Commands {
         /// Skip cache lookup
         #[arg(long)]
         no_cache: bool,
+
+        /// Preview translation without making API calls
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Force specific parser format (txt, srt, json, ass, vtt, epub)
+        #[arg(long)]
+        format: Option<String>,
+
+        /// Output results as JSON (for scripting)
+        #[arg(long)]
+        json: bool,
     },
 
     /// Show cache statistics
@@ -120,7 +132,15 @@ async fn main() -> Result<()> {
             to,
             glossary,
             no_cache,
-        } => commands::translate::run(input, output, from, to, glossary, no_cache).await,
+            dry_run,
+            format,
+            json,
+        } => {
+            commands::translate::run(
+                input, output, from, to, glossary, no_cache, dry_run, format, json,
+            )
+            .await
+        }
         Commands::Cache { action } => match action {
             CacheAction::Stats => commands::cache::stats().await,
             CacheAction::Clear => commands::cache::clear().await,
