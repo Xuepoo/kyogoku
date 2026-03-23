@@ -83,7 +83,7 @@ impl TranslationEngine {
     pub async fn translate_blocks(
         &self,
         blocks: &mut [TranslationBlock],
-        on_progress: impl Fn(usize, usize),
+        mut on_progress: impl FnMut(usize, usize),
     ) -> Result<()> {
         let total = blocks.iter().filter(|b| b.needs_translation()).count();
         let mut completed = 0;
@@ -243,11 +243,104 @@ impl TranslationEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::TranslationCache;
+    use crate::config::{ApiConfig, ApiProvider};
+    use tempfile::TempDir;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_engine_creation() {
         let config = Config::default();
         let engine = TranslationEngine::new(config);
         assert!(engine.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_translate_block_uses_mock_api_and_cache() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "chatcmpl-engine",
+                "choices": [{
+                    "message": {"role": "assistant", "content": "翻译结果"},
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let config = Config {
+            api: ApiConfig {
+                provider: ApiProvider::Custom,
+                api_base: Some(format!("{}/v1", server.uri())),
+                api_key: Some("test-key".to_string()),
+                model: "mock-model".to_string(),
+                ..ApiConfig::default()
+            },
+            ..Config::default()
+        };
+
+        let tmp = TempDir::new().unwrap();
+        let cache = TranslationCache::open(tmp.path()).unwrap();
+        let engine = TranslationEngine::new(config).unwrap().with_cache(cache);
+
+        let block = TranslationBlock::new("原文测试");
+        let first = engine.translate_block(&block).await.unwrap();
+        assert_eq!(first, "翻译结果");
+
+        let second = engine.translate_block(&block).await.unwrap();
+        assert_eq!(second, "翻译结果");
+    }
+
+    #[tokio::test]
+    async fn test_translate_blocks_progress_and_context_flow() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "chatcmpl-engine-2",
+                "choices": [{
+                    "message": {"role": "assistant", "content": "统一译文"},
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 20, "completion_tokens": 5, "total_tokens": 25}
+            })))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let mut config = Config {
+            api: ApiConfig {
+                provider: ApiProvider::Custom,
+                api_base: Some(format!("{}/v1", server.uri())),
+                api_key: Some("test-key".to_string()),
+                model: "mock-model".to_string(),
+                ..ApiConfig::default()
+            },
+            ..Config::default()
+        };
+        config.translation.context_size = 5;
+
+        let engine = TranslationEngine::new(config).unwrap();
+        let mut blocks = vec![
+            TranslationBlock::new("第一句"),
+            TranslationBlock::new("第二句"),
+        ];
+        let mut progress_calls = Vec::new();
+
+        engine
+            .translate_blocks(&mut blocks, |done, total| {
+                progress_calls.push((done, total))
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(blocks[0].target.as_deref(), Some("统一译文"));
+        assert_eq!(blocks[1].target.as_deref(), Some("统一译文"));
+        assert_eq!(progress_calls, vec![(1, 2), (2, 2)]);
     }
 }
