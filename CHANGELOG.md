@@ -7,10 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ASS/SSA Parser** (.ass, .ssa): Advanced SubStation Alpha subtitle format
+  * Parses dialogue with timing, styles, and speaker information
+  * Strips override tags (bold, italic, positioning) while preserving text
+  * Handles line breaks (\N, \n) correctly
+- **WebVTT Parser** (.vtt): HTML5 video text tracks format
+  * Parses cue timing and settings (align, position, etc.)
+  * Strips HTML-like formatting tags
+  * Supports optional cue identifiers
+- Integration test example (`examples/test_parsers.rs`)
+
+### Changed
+- Added nom 8.0 dependency for advanced parsing capabilities
+- Updated README and documentation to list 7 supported file extensions
+
 ### Planned
-- nom-based Ren'Py (.rpy) parser
-- ASS/SSA subtitle parser
+- Ren'Py (.rpy) visual novel script parser
 - Tauri 2.0 GUI application
+- RAG with local vector database
 
 ---
 
