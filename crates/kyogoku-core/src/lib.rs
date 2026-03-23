@@ -3,6 +3,7 @@ pub mod cache;
 pub mod config;
 pub mod engine;
 pub mod glossary;
+pub mod rag;
 
 pub use api::{ApiClient, ChatMessage};
 pub use cache::TranslationCache;

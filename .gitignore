@@ -30,3 +30,4 @@ node_modules/
 dist/
 .vite/
 
+models/
