@@ -24,9 +24,9 @@ Development roadmap for Kyogoku translation engine.
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Ren'Py (.rpy) Parser | 🔄 Planned | Visual novel script format, complex syntax |
-| ASS/SSA Subtitles | 🔄 Planned | Advanced SubStation Alpha format |
-| WebVTT | 🔄 Planned | Web Video Text Tracks standard |
+| Ren'Py (.rpy) Parser | ✅ Completed | Visual novel script format, complex syntax |
+| ASS/SSA Subtitles | ✅ Completed | Advanced SubStation Alpha format |
+| WebVTT | ✅ Completed | Web Video Text Tracks standard |
 
 **Implementation Plan:**
 - Create `nom`-based lexer for syntax analysis

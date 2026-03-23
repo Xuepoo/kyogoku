@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Parsers**: Added support for `.rpy` (Ren'Py) script files.
+  * Parsing of dialogue lines and menu choices.
+  * Preservation of Python indentation and structure.
+- **Testing**: Added comprehensive integration test suite with `insta` snapshot testing.
+- **Testing**: Added `tests/fixtures` directory with real-world sample files.
 - **ASS/SSA Parser** (.ass, .ssa): Advanced SubStation Alpha subtitle format
   * Parses dialogue with timing, styles, and speaker information
   * Strips override tags (bold, italic, positioning) while preserving text
@@ -23,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated README and documentation to list 7 supported file extensions
 
 ### Planned
-- Ren'Py (.rpy) visual novel script parser
 - Tauri 2.0 GUI application
 - RAG with local vector database
 
