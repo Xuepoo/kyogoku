@@ -123,6 +123,9 @@ impl ApiClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ApiConfig;
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_chat_request_serialization() {
@@ -139,5 +142,108 @@ mod tests {
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("gpt-4o"));
         assert!(json.contains("Hello"));
+    }
+
+    #[tokio::test]
+    async fn test_chat_success_with_mock_server() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .and(header("authorization", "Bearer test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "chatcmpl-test",
+                "choices": [{
+                    "message": {"role": "assistant", "content": "你好，世界"},
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 6, "total_tokens": 16}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let config = ApiConfig {
+            api_base: Some(format!("{}/v1", server.uri())),
+            api_key: Some("test-key".to_string()),
+            model: "mock-model".to_string(),
+            ..ApiConfig::default()
+        };
+
+        let client = ApiClient::new(config).unwrap();
+        let response = client
+            .chat(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "hello".to_string(),
+            }])
+            .await
+            .unwrap();
+
+        assert_eq!(response, "你好，世界");
+    }
+
+    #[tokio::test]
+    async fn test_chat_api_error_surface() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("internal error"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let config = ApiConfig {
+            api_base: Some(format!("{}/v1", server.uri())),
+            api_key: Some("test-key".to_string()),
+            model: "mock-model".to_string(),
+            ..ApiConfig::default()
+        };
+        let client = ApiClient::new(config).unwrap();
+
+        let err = client
+            .chat(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "hello".to_string(),
+            }])
+            .await
+            .unwrap_err();
+
+        let msg = err.to_string();
+        assert!(msg.contains("API request failed with status"));
+        assert!(msg.contains("internal error"));
+    }
+
+    #[tokio::test]
+    async fn test_chat_missing_content_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "chatcmpl-test",
+                "choices": [{
+                    "message": {"role": "assistant", "content": null},
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 2, "completion_tokens": 0, "total_tokens": 2}
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let config = ApiConfig {
+            api_base: Some(format!("{}/v1", server.uri())),
+            api_key: Some("test-key".to_string()),
+            model: "mock-model".to_string(),
+            ..ApiConfig::default()
+        };
+        let client = ApiClient::new(config).unwrap();
+
+        let err = client
+            .chat(vec![ChatMessage {
+                role: "user".to_string(),
+                content: "hello".to_string(),
+            }])
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("No response content from API"));
     }
 }
