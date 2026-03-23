@@ -101,7 +101,17 @@ kyogoku config test
 
 ## Basic Usage
 
-### Workflow Overview
+### GUI Application (New!)
+
+Kyogoku now includes a graphical interface for easier configuration and translation.
+
+1.  **Launch**: Run `kyogoku-gui` (or open the app from your launcher).
+2.  **Configure**: Set your API Key, Model, and Style in the "Configuration" panel. Click "Save Changes".
+3.  **Translate**: Drag and drop a file (e.g., `.rpy`, `.epub`, `.srt`) into the "New Translation Task" zone.
+4.  **Wait**: The translation progress will be shown.
+5.  **Result**: The translated file will be saved in the same directory as the source, with `_translated` suffix.
+
+### CLI Workflow Overview
 
 1. **Prepare**: Organize source files in a directory
 2. **Configure**: Set up API and translation preferences
@@ -229,6 +239,50 @@ kyogoku translate ./input.json --no-cache
 ---
 
 ## Supported Formats
+
+### EPUB Novels (.epub)
+
+Automatically extracts text content from XHTML files, ignoring CSS and images.
+
+**Input:**
+`.epub` file with Japanese text.
+
+**Output:**
+`_translated.epub` with translated content injected back into the structure.
+
+### Ren'Py Scripts (.rpy)
+
+Intelligent parsing of dialogue blocks, menus, and Python logic.
+
+**Input:**
+```rpy
+e "こんにちは。"
+menu:
+    "はい":
+        jump yes
+```
+
+**Output:**
+```rpy
+e "你好。"
+menu:
+    "是":
+        jump yes
+```
+
+### Advanced Subtitles (.ass)
+
+Preserves styles, effects, and dialogue events.
+
+**Input:**
+```ass
+Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello World!
+```
+
+**Output:**
+```ass
+Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,你好世界！
+```
 
 ### Plain Text (.txt)
 

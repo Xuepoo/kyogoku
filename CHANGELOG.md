@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **GUI Application**: Cross-platform desktop interface using Tauri 2.0.
+  * Real-time translation progress tracking.
+  * Interactive configuration editor.
+  * Drag-and-drop file processing.
+- **EPUB Parser**: Support for translating `.epub` electronic books.
+  * Extracts XHTML content while preserving structure.
+  * Re-packages translated content into valid EPUB files.
 - **Parsers**: Added support for `.rpy` (Ren'Py) script files.
   * Parsing of dialogue lines and menu choices.
   * Preservation of Python indentation and structure.

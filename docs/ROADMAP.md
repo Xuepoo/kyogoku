@@ -9,16 +9,18 @@ Development roadmap for Kyogoku translation engine.
 ### Completed Features
 - [x] CLI MVP with init/config/translate/cache commands
 - [x] Multi-format parser (TXT, SRT, JSON)
+- [x] Advanced Parsers (Ren'Py, ASS, WebVTT, EPUB)
 - [x] Translation pipeline with caching
 - [x] Glossary system
 - [x] Multiple API provider support
 - [x] Complete documentation suite
+- [x] GUI Application (MVP)
 
 ---
 
 ## Upcoming Milestones
 
-### Q2 2026: Advanced Parsers
+### Q3 2026: GUI Enhancements
 
 **Target**: Add support for game script formats using nom parser combinator library.
 
@@ -38,17 +40,18 @@ Development roadmap for Kyogoku translation engine.
 
 ---
 
-### Q3 2026: GUI Application
+### Q3 2026: GUI Enhancements
 
-**Target**: Create desktop GUI using Tauri 2.0 with real-time progress visualization.
+**Target**: Enhance the desktop GUI with real-time features and better UX.
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Tauri 2.0 App | 🔄 Planned | Desktop application framework |
-| File Browser | 🔄 Planned | Interactive file/folder selection |
-| Progress Dashboard | 🔄 Planned | Real-time translation stats |
+| Tauri 2.0 App | ✅ Completed | Desktop application framework (MVP released) |
+| File Browser | ✅ Completed | Interactive file/folder selection |
+| Progress Dashboard | ✅ Completed | Real-time translation stats |
 | Translation History | 🔄 Planned | View and manage translations |
-| Settings Panel | 🔄 Planned | GUI config editor |
+| Settings Panel | ✅ Completed | GUI config editor |
+| Real-time Preview | 🔄 Planned | Side-by-side comparison |
 
 **Tech Stack:**
 - Frontend: Vanilla JavaScript + DOM API (lightweight)
