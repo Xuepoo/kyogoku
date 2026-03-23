@@ -7,35 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-23
+
 ### Added
 - **GUI Application**: Cross-platform desktop interface using Tauri 2.0.
-  * Real-time translation progress tracking.
+  * Real-time translation progress tracking with live preview.
   * Interactive configuration editor.
   * Drag-and-drop file processing.
+  * Translation history with localStorage persistence.
+  * RAG configuration panel (beta).
 - **EPUB Parser**: Support for translating `.epub` electronic books.
   * Extracts XHTML content while preserving structure.
   * Re-packages translated content into valid EPUB files.
-- **Parsers**: Added support for `.rpy` (Ren'Py) script files.
+- **Ren'Py Parser** (.rpy): Visual novel script format.
   * Parsing of dialogue lines and menu choices.
   * Preservation of Python indentation and structure.
-- **Testing**: Added comprehensive integration test suite with `insta` snapshot testing.
-- **Testing**: Added `tests/fixtures` directory with real-world sample files.
-- **ASS/SSA Parser** (.ass, .ssa): Advanced SubStation Alpha subtitle format
-  * Parses dialogue with timing, styles, and speaker information
-  * Strips override tags (bold, italic, positioning) while preserving text
-  * Handles line breaks (\N, \n) correctly
-- **WebVTT Parser** (.vtt): HTML5 video text tracks format
-  * Parses cue timing and settings (align, position, etc.)
-  * Strips HTML-like formatting tags
-  * Supports optional cue identifiers
+- **RAG Memory** (Beta): Semantic search for context-aware translation.
+  * ONNX Runtime integration for local embedding generation.
+  * Simple vector store with cosine similarity search.
+  * Automatic context retrieval from past translations.
+  * Optional feature, disabled by default.
+- **ASS/SSA Parser** (.ass, .ssa): Advanced SubStation Alpha subtitle format.
+  * Parses dialogue with timing, styles, and speaker information.
+  * Strips override tags while preserving text.
+- **WebVTT Parser** (.vtt): HTML5 video text tracks format.
+  * Parses cue timing and settings.
+  * Strips HTML-like formatting tags.
+- **Testing**: Comprehensive integration test suite with `insta` snapshot testing.
+- **CI/CD**: GitHub Actions workflow with Tauri build support.
 
 ### Changed
-- Added nom 8.0 dependency for advanced parsing capabilities
-- Updated README and documentation to list 8 supported file extensions (txt, srt, json, ass, ssa, vtt, webvtt, rpy)
-
-### Planned
-- Tauri 2.0 GUI application
-- RAG with local vector database
+- Updated Rust edition to 2024 for all crates.
+- Added `nom` 8.0 dependency for advanced parsing capabilities.
+- Added `ort` (ONNX Runtime) and `tokenizers` for RAG.
+- Updated README and documentation with GUI and RAG features.
+- Extended supported formats to 8 types (txt, srt, json, ass, ssa, vtt, epub, rpy).
 
 ---
 
@@ -88,9 +94,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.2.0 | 2026-03-23 | GUI application, RAG memory, EPUB support |
 | 0.1.0 | 2026-03-23 | Initial release with CLI MVP |
 
 ---
 
-[Unreleased]: https://github.com/xuepoo/kyogoku/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/xuepoo/kyogoku/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/xuepoo/kyogoku/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/xuepoo/kyogoku/releases/tag/v0.1.0

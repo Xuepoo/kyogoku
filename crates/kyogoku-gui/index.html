@@ -77,6 +77,34 @@
                 </div>
             </div>
 
+            <!-- RAG (Retrieval Augmented Generation) -->
+            <div class="pt-4 border-t border-gray-700/50">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-medium text-purple-400 uppercase tracking-wider font-bold">RAG Memory (Beta)</label>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="rag-enabled" class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500 mb-2">
+                    Enable semantic search to reuse past translations and improve consistency.
+                </p>
+                <div id="rag-settings" class="space-y-3 hidden transition-all duration-300">
+                     <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Model Path (.onnx)</label>
+                        <input type="text" id="rag-model-path" placeholder="/path/to/model.onnx" class="w-full bg-gray-900/50 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono text-xs" />
+                    </div>
+                     <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Tokenizer Path (.json)</label>
+                        <input type="text" id="rag-tokenizer-path" placeholder="/path/to/tokenizer.json" class="w-full bg-gray-900/50 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono text-xs" />
+                    </div>
+                     <div>
+                        <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Vector Store Path</label>
+                        <input type="text" id="rag-store-path" placeholder="~/.local/share/kyogoku/vectors" class="w-full bg-gray-900/50 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono text-xs" />
+                    </div>
+                </div>
+            </div>
+
             <div class="pt-4 flex gap-3">
               <button type="submit" id="save-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-200 shadow-lg hover:shadow-purple-500/20 active:scale-95 transform">
                 Save Changes
@@ -101,7 +129,17 @@
                     <p class="text-xs text-gray-500 mt-2">or drag and drop here</p>
                 </div>
                 
-                <div class="mt-8">
+                <div id="preview-section" class="mt-8 hidden">
+                    <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3 flex justify-between items-center">
+                        <span>Live Preview</span>
+                        <span id="preview-status" class="text-xs text-purple-400 font-mono"></span>
+                    </h3>
+                    <div class="bg-gray-900/80 rounded-lg h-80 overflow-y-auto border border-gray-700 shadow-inner flex flex-col-reverse" id="preview-container">
+                        <!-- Rows injected here -->
+                    </div>
+                </div>
+
+                <div class="mt-8" id="recent-activity">
                     <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
                     <div class="bg-gray-900/50 rounded p-4 text-center">
                         <p class="text-sm text-gray-500 italic">No recent tasks found.</p>

@@ -10,11 +10,13 @@ Kyogoku (京极) derives its name from "驱邪" (exorcism), aiming to banish the
 
 ## ✨ Features
 
-- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT subtitles, Ren'Py scripts, JSON (MTool format)
+- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT, EPUB, Ren'Py scripts, JSON (MTool format)
 - **Intelligent Caching**: Blake3 content hashing with sled KV store for incremental translation
 - **Context Window**: Maintains translation consistency with sliding window of previous translations
 - **Glossary System**: Custom terminology enforcement for character names, locations, etc.
 - **Multiple Providers**: OpenAI, DeepSeek, Anthropic, Google, local LLMs (Ollama)
+- **RAG Memory** (Beta): Semantic search using local ONNX embeddings for context-aware translation
+- **GUI Application**: Tauri 2.0-based desktop app with real-time translation preview
 - **XDG Compliant**: Clean configuration following freedesktop.org standards
 
 ## 🚀 Quick Start
@@ -26,11 +28,27 @@ Kyogoku (京极) derives its name from "驱邪" (exorcism), aiming to banish the
 git clone https://github.com/xuepoo/kyogoku
 cd kyogoku
 
-# Build release binary
-cargo build --release
+# Build release binary (CLI only)
+cargo build --release --bin kyogoku
 
 # Install to PATH
 sudo cp target/release/kyogoku /usr/local/bin/
+```
+
+### GUI Installation
+
+The GUI requires Node.js and pnpm:
+
+```bash
+# Install Node.js dependencies
+cd crates/kyogoku-gui
+pnpm install
+
+# Run development version
+pnpm tauri dev
+
+# Build production release
+pnpm tauri build
 ```
 
 ### Configuration
@@ -108,9 +126,11 @@ Options:
 kyogoku/
 ├── crates/
 │   ├── kyogoku-cli/      # Command-line interface
-│   ├── kyogoku-core/     # Config, API, cache, engine
-│   └── kyogoku-parser/   # Format parsers (TXT, SRT, JSON)
+│   ├── kyogoku-core/     # Config, API, cache, engine, RAG
+│   ├── kyogoku-parser/   # Format parsers (TXT, SRT, JSON, EPUB, etc.)
+│   └── kyogoku-gui/      # Tauri 2.0 desktop application
 ├── docs/                 # Documentation
+├── models/               # ONNX models for RAG (optional)
 └── Cargo.toml           # Workspace manifest
 ```
 
