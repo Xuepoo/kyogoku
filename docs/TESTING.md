@@ -183,10 +183,9 @@ We aim for:
 
 GitHub Actions will run:
 ```yaml
-- cargo test --workspace
-- cargo clippy --workspace
+- cargo test --workspace --all-targets
+- cargo clippy --workspace --all-targets -- -D warnings
 - cargo fmt --check
-- cargo insta test --check  # Fail if snapshots need review
 ```
 
 ## Best Practices

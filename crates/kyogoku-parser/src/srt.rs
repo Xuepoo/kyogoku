@@ -33,10 +33,7 @@ impl Parser for SrtParser {
                 .with_context(|| format!("Invalid SRT index: {}", index_line))?;
 
             // Parse timestamp
-            let timestamp = lines
-                .next()
-                .context("Missing timestamp")?
-                .to_string();
+            let timestamp = lines.next().context("Missing timestamp")?.to_string();
 
             // Parse text (can be multiple lines)
             let mut text_lines = Vec::new();
@@ -50,13 +47,10 @@ impl Parser for SrtParser {
 
             let text = text_lines.join("\n");
 
-            blocks.push(
-                TranslationBlock::new(&text)
-                    .with_metadata(json!({
-                        "index": index,
-                        "timestamp": timestamp,
-                    }))
-            );
+            blocks.push(TranslationBlock::new(&text).with_metadata(json!({
+                "index": index,
+                "timestamp": timestamp,
+            })));
         }
 
         tracing::debug!("Parsed {} blocks from SRT", blocks.len());
@@ -69,13 +63,13 @@ impl Parser for SrtParser {
         for (idx, block) in blocks.iter().enumerate() {
             // Index
             output.push_str(&format!("{}\n", idx + 1));
-            
+
             // Timestamp from metadata
             if let Some(ts) = block.metadata.get("timestamp").and_then(|v| v.as_str()) {
                 output.push_str(ts);
                 output.push('\n');
             }
-            
+
             // Text
             output.push_str(block.output());
             output.push_str("\n\n");

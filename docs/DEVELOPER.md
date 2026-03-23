@@ -84,7 +84,7 @@ kyogoku/
 ├── LICENSE                 # MIT License
 ├── .github/
 │   ├── copilot-instructions.md  # AI assistant context
-│   └── workflows/               # CI/CD (future)
+│   └── workflows/               # CI/CD workflows
 ├── crates/
 │   ├── kyogoku-cli/        # CLI binary
 │   │   └── src/
@@ -105,7 +105,10 @@ kyogoku/
 │           ├── parser.rs   # Parser trait
 │           ├── txt.rs      # Plain text parser
 │           ├── srt.rs      # SRT subtitle parser
-│           └── json.rs     # JSON/MTool parser
+│           ├── json.rs     # JSON/MTool parser
+│           ├── ass.rs      # ASS/SSA subtitle parser
+│           ├── vtt.rs      # WebVTT subtitle parser
+│           └── rpy.rs      # Ren'Py script parser
 └── docs/                   # Documentation
 ```
 
@@ -228,6 +231,23 @@ cargo clippy --workspace
 cargo clippy --fix --workspace --allow-dirty
 ```
 
+## CI / GitHub Actions
+
+Kyogoku uses GitHub Actions workflow: `.github/workflows/ci.yml`.
+
+Trigger policy:
+- `push` to `dev` and `main`
+- `pull_request` targeting `dev` and `main`
+
+CI checks:
+```bash
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
+```
+
+The workflow uses Cargo cache to speed up repeated runs.
+
 ### Pre-commit Checks
 
 Before committing, run:
@@ -259,6 +279,14 @@ cargo test --workspace
 5. Run lints: `cargo clippy --workspace`
 6. Commit with descriptive message
 7. Push and create a Pull Request
+
+### Branch Workflow
+
+- `main`: stable releases only (tagged versions)
+- `dev`: main integration branch
+- `feature/*`: short-lived feature branches merged into `dev`
+
+Do not commit directly to `main`. Always test before merge.
 
 ### Commit Messages
 

@@ -27,10 +27,10 @@ impl VttCue {
         if lines.is_empty() {
             return None;
         }
-        
+
         let mut iter = lines.iter();
         let first_line = *iter.next()?;
-        
+
         // Check if first line is an identifier (doesn't contain "-->")
         let (identifier, timing_line) = if first_line.contains("-->") {
             (None, first_line)
@@ -41,23 +41,27 @@ impl VttCue {
             }
             (Some(first_line.to_string()), timing)
         };
-        
+
         // Parse timing line: "00:00:01.000 --> 00:00:04.000 settings..."
         let arrow_pos = timing_line.find("-->")?;
         let start = timing_line[..arrow_pos].trim().to_string();
         let after_arrow = timing_line[arrow_pos + 3..].trim();
-        
+
         // Settings come after end time
-        let (end, settings) = if let Some(space_pos) = after_arrow.find(|c: char| c.is_whitespace()) {
-            (after_arrow[..space_pos].to_string(), after_arrow[space_pos..].trim().to_string())
+        let (end, settings) = if let Some(space_pos) = after_arrow.find(|c: char| c.is_whitespace())
+        {
+            (
+                after_arrow[..space_pos].to_string(),
+                after_arrow[space_pos..].trim().to_string(),
+            )
         } else {
             (after_arrow.to_string(), String::new())
         };
-        
+
         // Remaining lines are the cue text
         let text: Vec<&str> = iter.copied().collect();
         let text = text.join("\n");
-        
+
         Some(Self {
             identifier,
             start,
@@ -72,7 +76,7 @@ impl VttCue {
 fn strip_vtt_tags(text: &str) -> String {
     let mut result = String::new();
     let mut in_tag = false;
-    
+
     for c in text.chars() {
         if c == '<' {
             in_tag = true;
@@ -82,7 +86,7 @@ fn strip_vtt_tags(text: &str) -> String {
             result.push(c);
         }
     }
-    
+
     result
 }
 
@@ -96,32 +100,31 @@ impl Parser for VttParser {
         let mut cue_lines: Vec<&str> = Vec::new();
         let mut cue_index = 0u32;
         let mut in_header = true;
-        
+
         for line in content.lines() {
             // Skip WEBVTT header line
             if in_header && line.starts_with("WEBVTT") {
                 in_header = false;
                 continue;
             }
-            
+
             // Empty line marks end of cue or continues header
             if line.trim().is_empty() {
                 if !cue_lines.is_empty() {
                     if let Some(cue) = VttCue::parse_from_lines(&cue_lines) {
                         let plain_text = strip_vtt_tags(&cue.text);
-                        
+
                         if !plain_text.trim().is_empty() {
-                            let block = TranslationBlock::new(&plain_text)
-                                .with_metadata(json!({
-                                    "format": "vtt",
-                                    "index": cue_index,
-                                    "identifier": cue.identifier,
-                                    "start": cue.start,
-                                    "end": cue.end,
-                                    "settings": cue.settings,
-                                    "original_text": cue.text,
-                                }));
-                            
+                            let block = TranslationBlock::new(&plain_text).with_metadata(json!({
+                                "format": "vtt",
+                                "index": cue_index,
+                                "identifier": cue.identifier,
+                                "start": cue.start,
+                                "end": cue.end,
+                                "settings": cue.settings,
+                                "original_text": cue.text,
+                            }));
+
                             blocks.push(block);
                             cue_index += 1;
                         }
@@ -136,62 +139,73 @@ impl Parser for VttParser {
                 cue_lines.push(line);
             }
         }
-        
+
         // Handle last cue if no trailing newline
-        if !cue_lines.is_empty() {
-            if let Some(cue) = VttCue::parse_from_lines(&cue_lines) {
-                let plain_text = strip_vtt_tags(&cue.text);
-                
-                if !plain_text.trim().is_empty() {
-                    let block = TranslationBlock::new(&plain_text)
-                        .with_metadata(json!({
-                            "format": "vtt",
-                            "index": cue_index,
-                            "identifier": cue.identifier,
-                            "start": cue.start,
-                            "end": cue.end,
-                            "settings": cue.settings,
-                            "original_text": cue.text,
-                        }));
-                    
-                    blocks.push(block);
-                }
+        if !cue_lines.is_empty()
+            && let Some(cue) = VttCue::parse_from_lines(&cue_lines)
+        {
+            let plain_text = strip_vtt_tags(&cue.text);
+
+            if !plain_text.trim().is_empty() {
+                let block = TranslationBlock::new(&plain_text).with_metadata(json!({
+                    "format": "vtt",
+                    "index": cue_index,
+                    "identifier": cue.identifier,
+                    "start": cue.start,
+                    "end": cue.end,
+                    "settings": cue.settings,
+                    "original_text": cue.text,
+                }));
+
+                blocks.push(block);
             }
         }
-        
+
         tracing::debug!("Parsed {} cues from VTT", blocks.len());
         Ok(blocks)
     }
 
     fn serialize(&self, blocks: &[TranslationBlock], _template: &str) -> Result<String> {
         let mut output = String::from("WEBVTT\n\n");
-        
+
         for block in blocks {
             // Optional identifier
-            if let Some(id) = block.metadata.get("identifier").and_then(|v| v.as_str()) {
-                if !id.is_empty() {
-                    output.push_str(id);
-                    output.push('\n');
-                }
+            if let Some(id) = block.metadata.get("identifier").and_then(|v| v.as_str())
+                && !id.is_empty()
+            {
+                output.push_str(id);
+                output.push('\n');
             }
-            
+
             // Timing line
-            let start = block.metadata.get("start").and_then(|v| v.as_str()).unwrap_or("00:00:00.000");
-            let end = block.metadata.get("end").and_then(|v| v.as_str()).unwrap_or("00:00:10.000");
-            let settings = block.metadata.get("settings").and_then(|v| v.as_str()).unwrap_or("");
-            
+            let start = block
+                .metadata
+                .get("start")
+                .and_then(|v| v.as_str())
+                .unwrap_or("00:00:00.000");
+            let end = block
+                .metadata
+                .get("end")
+                .and_then(|v| v.as_str())
+                .unwrap_or("00:00:10.000");
+            let settings = block
+                .metadata
+                .get("settings")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
             output.push_str(&format!("{} --> {}", start, end));
             if !settings.is_empty() {
                 output.push(' ');
                 output.push_str(settings);
             }
             output.push('\n');
-            
+
             // Cue text
             output.push_str(block.output());
             output.push_str("\n\n");
         }
-        
+
         Ok(output.trim_end().to_string())
     }
 }
@@ -230,14 +244,29 @@ Line two
 
         assert_eq!(blocks.len(), 3);
         assert_eq!(blocks[0].source, "Hello, world!");
-        assert_eq!(blocks[0].metadata.get("identifier").and_then(|v| v.as_str()), Some("1"));
-        
+        assert_eq!(
+            blocks[0]
+                .metadata
+                .get("identifier")
+                .and_then(|v| v.as_str()),
+            Some("1")
+        );
+
         assert_eq!(blocks[1].source, "This is styled text.");
-        assert_eq!(blocks[1].metadata.get("settings").and_then(|v| v.as_str()), Some("align:start"));
-        
+        assert_eq!(
+            blocks[1].metadata.get("settings").and_then(|v| v.as_str()),
+            Some("align:start")
+        );
+
         assert!(blocks[2].source.contains("Line one"));
         assert!(blocks[2].source.contains("Line two"));
-        assert!(blocks[2].metadata.get("identifier").and_then(|v| v.as_str()).is_none());
+        assert!(
+            blocks[2]
+                .metadata
+                .get("identifier")
+                .and_then(|v| v.as_str())
+                .is_none()
+        );
     }
 
     #[test]
@@ -265,14 +294,17 @@ Line two
     fn test_vtt_roundtrip() {
         let parser = VttParser;
         let blocks = parser.parse(SAMPLE_VTT).unwrap();
-        
-        let translated: Vec<_> = blocks.into_iter().map(|b| {
-            let source = b.source.clone();
-            b.with_target(format!("[TR] {}", source))
-        }).collect();
-        
+
+        let translated: Vec<_> = blocks
+            .into_iter()
+            .map(|b| {
+                let source = b.source.clone();
+                b.with_target(format!("[TR] {}", source))
+            })
+            .collect();
+
         let output = parser.serialize(&translated, SAMPLE_VTT).unwrap();
-        
+
         let reparsed = parser.parse(&output).unwrap();
         assert_eq!(reparsed.len(), 3);
         assert!(reparsed[0].source.contains("[TR]"));

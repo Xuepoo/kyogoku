@@ -2,11 +2,15 @@ mod commands;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 #[derive(Parser)]
 #[command(name = "kyogoku")]
-#[command(author, version, about = "AI-powered translation engine for literature and games")]
+#[command(
+    author,
+    version,
+    about = "AI-powered translation engine for literature and games"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -116,9 +120,7 @@ async fn main() -> Result<()> {
             to,
             glossary,
             no_cache,
-        } => {
-            commands::translate::run(input, output, from, to, glossary, no_cache).await
-        }
+        } => commands::translate::run(input, output, from, to, glossary, no_cache).await,
         Commands::Cache { action } => match action {
             CacheAction::Stats => commands::cache::stats().await,
             CacheAction::Clear => commands::cache::clear().await,
