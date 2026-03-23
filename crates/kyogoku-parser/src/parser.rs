@@ -40,6 +40,8 @@ impl ParserRegistry {
         registry.register(Box::new(crate::txt::TxtParser));
         registry.register(Box::new(crate::srt::SrtParser));
         registry.register(Box::new(crate::json::JsonParser));
+        registry.register(Box::new(crate::ass::AssParser));
+        registry.register(Box::new(crate::vtt::VttParser));
 
         registry
     }
@@ -102,6 +104,9 @@ mod tests {
         assert!(exts.contains(&"txt"));
         assert!(exts.contains(&"srt"));
         assert!(exts.contains(&"json"));
+        assert!(exts.contains(&"ass"));
+        assert!(exts.contains(&"ssa"));
+        assert!(exts.contains(&"vtt"));
     }
 
     #[test]
@@ -111,6 +116,9 @@ mod tests {
         assert!(registry.get_parser(Path::new("test.txt")).is_some());
         assert!(registry.get_parser(Path::new("test.srt")).is_some());
         assert!(registry.get_parser(Path::new("test.json")).is_some());
+        assert!(registry.get_parser(Path::new("test.ass")).is_some());
+        assert!(registry.get_parser(Path::new("test.ssa")).is_some());
+        assert!(registry.get_parser(Path::new("test.vtt")).is_some());
         assert!(registry.get_parser(Path::new("test.xyz")).is_none());
     }
 }
