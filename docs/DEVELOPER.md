@@ -20,14 +20,16 @@ Guide for setting up the development environment, running tests, and contributin
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Rust | 1.85+ (2024 edition) | Compiler and toolchain |
+| Node.js | 18+ | GUI frontend runtime |
+| pnpm | Latest | GUI package manager |
 | Git | Latest | Version control |
 | cargo-watch | Optional | Auto-rebuild on changes |
 
 ### Setup (Arch Linux)
 
 ```bash
-# Install Rust
-sudo pacman -S rustup gcc
+# Install Rust and Node.js
+sudo pacman -S rustup gcc nodejs pnpm
 rustup default stable
 
 # Clone repository
@@ -141,6 +143,23 @@ cargo build --release
 
 Binary location: `target/release/kyogoku`
 
+### Build GUI (Tauri)
+
+```bash
+cd crates/kyogoku-gui
+pnpm install
+pnpm tauri build
+```
+
+The output will be in `crates/kyogoku-gui/src-tauri/target/release/bundle`.
+
+### Run GUI in Dev Mode
+
+```bash
+cd crates/kyogoku-gui
+pnpm tauri dev
+```
+
 ### Release Profile
 
 The release profile is optimized for binary size:
@@ -169,6 +188,15 @@ cargo watch -x build
 
 ```bash
 cargo test --workspace
+```
+
+### Run GUI Tests (Playwright)
+
+```bash
+cd crates/kyogoku-gui
+pnpm install
+pnpm playwright install
+pnpm test
 ```
 
 ### Run Tests for Specific Crate

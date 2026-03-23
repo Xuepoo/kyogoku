@@ -19,6 +19,15 @@ Kyogoku is structured as a Cargo workspace with three crates following the **hex
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│                      kyogoku-gui                            │
+│                  (Graphical Interface Layer)                │
+│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌─────────┐     │
+│  │ Frontend │  │ Commands │  │  Events   │  │  State  │     │
+│  └──────────┘  └──────────┘  └───────────┘  └─────────┘     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
 │                      kyogoku-cli                            │
 │                   (User Interface Layer)                    │
 │  ┌─────────┐  ┌─────────┐  ┌───────────┐  ┌──────────┐    │
@@ -53,7 +62,7 @@ Kyogoku is structured as a Cargo workspace with three crates following the **hex
 
 ### Design Principles
 
-1. **Separation of Concerns**: Each crate has a single responsibility
+1. **Separation of Concerns**: CLI and GUI are distinct consumers of the Core library
 2. **Dependency Inversion**: Core depends on abstractions (Parser trait), not concrete implementations
 3. **Composition over Inheritance**: Engine composed of API, Cache, Glossary components
 4. **Incremental Processing**: Content-addressed caching enables resume from any point
@@ -61,6 +70,29 @@ Kyogoku is structured as a Cargo workspace with three crates following the **hex
 ---
 
 ## Module Architecture
+
+### kyogoku-gui
+
+**Purpose**: Cross-platform graphical user interface using Tauri 2.0.
+
+```
+crates/kyogoku-gui/
+├── src-tauri/
+│   ├── src/
+│   │   ├── lib.rs       # Tauri commands & event emission
+│   │   └── main.rs      # Application entry point
+│   └── Cargo.toml       # Tauri dependencies
+├── src/
+│   ├── main.ts          # Frontend logic (TypeScript)
+│   ├── index.html       # UI layout (Tailwind CSS)
+│   └── style.css        # Global styles
+└── package.json         # Frontend dependencies
+```
+
+**Key Components:**
+- **Commands**: `get_config`, `save_config`, `translate_file` - Rust functions callable from JS.
+- **Events**: `translate-start`, `translate-progress`, `translate-complete` - Real-time updates.
+- **State**: `Mutex<Config>` managed by Tauri's state system.
 
 ### kyogoku-parser
 
@@ -394,30 +426,6 @@ pub enum TranslationStyle {
 ---
 
 ## Future Architecture (Roadmap)
-
-### Q2 2026: nom-based Parsers
-
-```
-kyogoku-parser/
-└── src/
-    ├── rpy/
-    │   ├── mod.rs     # Ren'Py parser module
-    │   ├── lexer.rs   # nom-based lexer
-    │   └── ast.rs     # AST definitions
-    └── ass/
-        └── ...        # ASS/SSA subtitle parser
-```
-
-### Q3 2026: Tauri GUI
-
-```
-kyogoku/
-├── crates/            # Existing Rust crates
-├── tauri-app/         # Tauri 2.0 application
-│   ├── src-tauri/     # Rust backend
-│   └── src/           # Vanilla JS frontend
-└── ...
-```
 
 ### Q4 2026: RAG Integration
 

@@ -97,6 +97,44 @@ cargo insta accept            # Accept all pending snapshots
 cargo insta test              # Run all snapshot tests
 ```
 
+### 4. GUI Testing (Playwright)
+
+We use Playwright for End-to-End (E2E) testing of the Tauri GUI.
+
+**Location**: `crates/kyogoku-gui/tests/`
+
+**Structure**:
+```
+crates/kyogoku-gui/
+├── tests/
+│   ├── ui.spec.ts    # Main UI test suite
+│   └── ...
+├── playwright.config.ts
+└── package.json
+```
+
+**Run Tests**:
+```bash
+cd crates/kyogoku-gui
+pnpm test
+```
+
+**Debug Tests**:
+```bash
+# Run with UI mode
+pnpm playwright test --ui
+
+# Run with trace viewer
+pnpm playwright show-trace test-results/
+```
+
+**What to Test**:
+- Application launch
+- Configuration form interaction
+- Navigation between tabs
+- File drop zone presence
+- (Mocked) Translation progress
+
 ## Test Fixtures (测试夹具)
 
 ### Directory Structure
