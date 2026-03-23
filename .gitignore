@@ -1,0 +1,24 @@
+# Rust
+target/
+Cargo.lock
+*.rs.bk
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Development
+.env
+.env.local
+*.log
+
+# Copilot (internal development context)
+.github/copilot-instructions.md
+
+# Test artifacts
+/test_output/
