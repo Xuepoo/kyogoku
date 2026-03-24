@@ -1312,54 +1312,89 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    function renderPreview() {
-        if (!previewContainer) return;
+    // Virtual scrolling state
+    const VISIBLE_ROWS = 50;
+    const ROW_HEIGHT = 80; // Approximate row height in pixels
+    let virtualScrollTop = 0;
+    let filteredItems: PreviewItem[] = [];
 
-        const filtered = previewItems.filter(item => {
+    function getFilteredItems(): PreviewItem[] {
+        return previewItems.filter(item => {
             if (previewSearch) {
                 const searchLower = previewSearch.toLowerCase();
                 if (!item.source.toLowerCase().includes(searchLower) && !item.target.toLowerCase().includes(searchLower)) {
                     return false;
                 }
             }
-            
             if (previewFilter === 'warnings') {
                 return item.warnings && item.warnings.length > 0;
             }
-            
             return true;
         });
+    }
 
-        // Limit to last 100 to prevent DOM explosion
-        const toRender = filtered.slice(-100);
-
-        // Simple re-render
-        previewContainer.innerHTML = toRender.map(item => {
-            const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings';
-            const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings';
-            
-            let html = `<div class="grid ${previewFilter === 'all' || previewFilter === 'warnings' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors">`;
-            
-            if (showSource) {
-                html += `<div class="text-gray-400 font-serif leading-relaxed ${(previewFilter === 'all' || previewFilter === 'warnings') ? 'text-right border-r border-gray-700 pr-4' : ''}">${highlightTerms(item.source, 'source')}</div>`;
-            }
-            
-            if (showTarget) {
-                html += `<div class="text-emerald-300 font-serif leading-relaxed ${(previewFilter === 'all' || previewFilter === 'warnings') ? 'pl-2' : ''}">${highlightTerms(item.target, 'target')}</div>`;
-            }
-            
-            if (item.warnings && item.warnings.length > 0) {
-                 html += `<div class="col-span-2 text-xs text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded flex items-center gap-2 mt-1 border border-amber-200 dark:border-amber-800/30">
-                    <span>⚠️ QA Warning:</span> ${item.warnings.join(', ')}
-                 </div>`;
-            }
-            
-            html += `</div>`;
-            return html;
-        }).join('');
+    function renderPreviewRow(item: PreviewItem): string {
+        const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings';
+        const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings';
+        const isTwoCol = previewFilter === 'all' || previewFilter === 'warnings';
         
-        // Scroll to bottom
-        previewContainer.scrollTop = previewContainer.scrollHeight;
+        let html = `<div class="grid ${isTwoCol ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors" style="min-height: ${ROW_HEIGHT}px;">`;
+        
+        if (showSource) {
+            html += `<div class="text-gray-400 font-serif leading-relaxed ${isTwoCol ? 'text-right border-r border-gray-700 pr-4' : ''}">${highlightTerms(item.source, 'source')}</div>`;
+        }
+        if (showTarget) {
+            html += `<div class="text-emerald-300 font-serif leading-relaxed ${isTwoCol ? 'pl-2' : ''}">${highlightTerms(item.target, 'target')}</div>`;
+        }
+        if (item.warnings && item.warnings.length > 0) {
+            html += `<div class="col-span-2 text-xs text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded flex items-center gap-2 mt-1 border border-amber-200 dark:border-amber-800/30">
+                <span>⚠️ QA Warning:</span> ${item.warnings.join(', ')}
+            </div>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    function renderPreview() {
+        if (!previewContainer) return;
+
+        filteredItems = getFilteredItems();
+        const totalItems = filteredItems.length;
+        
+        // For small lists, render all
+        if (totalItems <= VISIBLE_ROWS) {
+            previewContainer.innerHTML = filteredItems.map(renderPreviewRow).join('');
+            previewContainer.scrollTop = previewContainer.scrollHeight;
+            return;
+        }
+
+        // Virtual scrolling for large lists
+        const startIdx = Math.max(0, Math.floor(virtualScrollTop / ROW_HEIGHT));
+        const endIdx = Math.min(totalItems, startIdx + VISIBLE_ROWS);
+        const visibleItems = filteredItems.slice(startIdx, endIdx);
+        
+        const paddingTop = startIdx * ROW_HEIGHT;
+        const paddingBottom = (totalItems - endIdx) * ROW_HEIGHT;
+        
+        previewContainer.innerHTML = `
+            <div style="height: ${paddingTop}px;"></div>
+            ${visibleItems.map(renderPreviewRow).join('')}
+            <div style="height: ${paddingBottom}px;"></div>
+        `;
+    }
+
+    // Handle scroll for virtual scrolling
+    if (previewContainer) {
+        previewContainer.addEventListener('scroll', () => {
+            const newScrollTop = previewContainer!.scrollTop;
+            // Only re-render if scrolled significantly (avoid thrashing)
+            if (Math.abs(newScrollTop - virtualScrollTop) > ROW_HEIGHT * 5) {
+                virtualScrollTop = newScrollTop;
+                if (filteredItems.length > VISIBLE_ROWS) {
+                    renderPreview();
+                }
+            }
+        });
     }
 
     await listen('translation-start', (event) => {
@@ -1392,11 +1427,13 @@ window.addEventListener("DOMContentLoaded", async () => {
             warnings
         });
         
-        // Optimization: If no search/filter/warnings, just append HTML directly
-        if (!previewSearch && previewFilter === 'all') {
-             if (previewContainer) {
+        // Virtual scrolling: use efficient append for streaming updates
+        if (!previewSearch && previewFilter === 'all' && previewItems.length <= VISIBLE_ROWS) {
+            // Small list: direct append
+            if (previewContainer) {
                 const row = document.createElement("div");
                 row.className = "grid grid-cols-2 gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors";
+                row.style.minHeight = `${ROW_HEIGHT}px`;
                 
                 let content = `
                     <div class="text-gray-400 font-serif leading-relaxed text-right border-r border-gray-700 pr-4">${highlightTerms(source, 'source')}</div>
@@ -1411,15 +1448,13 @@ window.addEventListener("DOMContentLoaded", async () => {
                 
                 row.innerHTML = content;
                 previewContainer.appendChild(row);
-                
-                // Keep DOM size in check
-                if (previewContainer.childElementCount > 100) {
-                    previewContainer.firstElementChild?.remove();
-                }
                 previewContainer.scrollTop = previewContainer.scrollHeight;
-             }
+            }
         } else {
-             renderPreview();
+            // Large list or filter active: use virtual scrolling
+            // Scroll to bottom and re-render
+            virtualScrollTop = Math.max(0, (previewItems.length - VISIBLE_ROWS) * ROW_HEIGHT);
+            renderPreview();
         }
     });
 
