@@ -1,0 +1,11 @@
+[plugin]
+name = "csv-parser"
+version = "0.1.0"
+description = "Parse CSV files for translation (key-value format)"
+authors = ["Kyogoku Contributors"]
+plugin_type = "wasm"
+binary = "csv_parser.wasm"
+
+[parser]
+extensions = ["csv", "tsv"]
+priority = 10
