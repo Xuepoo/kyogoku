@@ -1,4 +1,4 @@
-use kyogoku_core::{Glossary, TranslationCache, TranslationEngine, config::Config};
+use kyogoku_core::{Glossary, GlossaryEntry, TranslationCache, TranslationEngine, config::Config};
 
 #[cfg(feature = "rag")]
 use kyogoku_core::rag::{
@@ -580,6 +580,42 @@ async fn translate_single_file(
     Ok(output_path.to_string_lossy().to_string())
 }
 
+// --- I18n Commands ---
+
+#[tauri::command]
+fn get_available_locales() -> Result<Vec<String>, String> {
+    Ok(vec!["en-US".to_string(), "zh-CN".to_string(), "ja-JP".to_string()])
+}
+
+#[tauri::command]
+fn get_current_locale() -> Result<String, String> {
+    Ok(kyogoku_i18n::get_locale())
+}
+
+#[tauri::command]
+fn set_locale(locale: String) -> Result<(), String> {
+    kyogoku_i18n::set_locale(&locale);
+    Ok(())
+}
+
+#[tauri::command]
+fn translate_text(key: String) -> Result<String, String> {
+    Ok(kyogoku_i18n::translate(&key))
+}
+
+#[tauri::command]
+fn get_glossary(state: State<AppState>) -> Result<Vec<GlossaryEntry>, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref path) = config.project.glossary_path {
+        if path.exists() {
+            let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
+            return Ok(glossary.entries().into_iter().cloned().collect());
+        }
+    }
+    Ok(vec![])
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Load config on startup or use default
@@ -605,6 +641,11 @@ pub fn run() {
             clear_queue,
             reorder_queue,
             start_batch_translation,
+            get_available_locales,
+            get_current_locale,
+            set_locale,
+            translate_text,
+            get_glossary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

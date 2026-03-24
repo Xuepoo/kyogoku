@@ -16,6 +16,9 @@
   </head>
 
   <body class="bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 min-h-screen flex flex-col items-center justify-start pt-6 font-sans antialiased transition-colors duration-300 selection:bg-amber-500 selection:text-white">
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    
     <div class="container max-w-7xl mx-auto p-4 lg:p-8">
       <header class="flex justify-between items-center mb-8 border-b border-stone-200 dark:border-stone-800 pb-6">
         <div>
@@ -46,7 +49,7 @@
           <div class="flex items-center justify-between mb-6">
              <h2 class="text-lg font-bold text-stone-800 dark:text-stone-200 flex items-center gap-2">
                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Settings
+                <span data-i18n="settings">Settings</span>
              </h2>
              <span id="status-badge" class="px-2 py-0.5 rounded text-xs font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 hidden">SAVED</span>
           </div>
@@ -80,6 +83,21 @@
                 <div>
                     <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-1.5">API Key</label>
                     <input type="password" id="api-key" placeholder="sk-..." class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-mono text-sm placeholder-stone-400" />
+                </div>
+            </div>
+
+            <!-- Language Selection -->
+            <div>
+                <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-1.5" data-i18n="language">Language</label>
+                <div class="relative">
+                    <select id="language-select" class="w-full appearance-none bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm">
+                        <option value="en-US">English (US)</option>
+                        <option value="zh-CN">简体中文</option>
+                        <option value="ja-JP">日本語</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                 </div>
             </div>
 
@@ -121,6 +139,24 @@
                 </div>
             </div>
 
+            <!-- Output Directory -->
+            <div class="pt-4 border-t border-stone-200 dark:border-stone-800">
+                <label class="block text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide mb-2">Output Directory</label>
+                <div class="flex gap-2">
+                    <input type="text" id="output-directory" placeholder="Same as source directory" class="flex-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm font-mono placeholder-stone-400" readonly />
+                    <button type="button" id="browse-output-btn" class="px-3 py-2 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 rounded-lg transition-colors flex items-center gap-1 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        Browse
+                    </button>
+                    <button type="button" id="clear-output-btn" class="px-2 py-2 bg-stone-200 dark:bg-stone-700 hover:bg-rose-200 dark:hover:bg-rose-800 text-stone-500 dark:text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors" title="Use source directory">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <p class="text-[10px] text-stone-400 dark:text-stone-500 mt-1">
+                    Where translated files will be saved. Leave empty to save next to source files.
+                </p>
+            </div>
+
             <!-- RAG (Retrieval Augmented Generation) -->
             <div class="pt-4 border-t border-stone-200 dark:border-stone-800">
                 <div class="flex items-center justify-between mb-2">
@@ -150,9 +186,9 @@
             </div>
 
             <div class="pt-2 flex gap-3">
-              <button type="submit" id="save-btn" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md active:scale-95 transform text-sm flex justify-center items-center gap-2">
+              <button type="submit" id="save-btn" title="Save configuration (Ctrl+S)" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md active:scale-95 transform text-sm flex justify-center items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                Save
+                Save <kbd class="ml-1 text-[10px] opacity-60 font-mono">⌘S</kbd>
               </button>
               <button type="button" id="reload-btn" class="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold py-2.5 px-4 rounded-lg transition duration-200 active:scale-95 transform text-sm border border-stone-200 dark:border-stone-700">
                 Reload
@@ -160,6 +196,33 @@
             </div>
             <p id="status-msg" class="text-xs text-center h-4 text-stone-500 dark:text-stone-400 font-mono transition-opacity opacity-0"></p>
           </form>
+          
+          <!-- Cost Estimation Panel -->
+          <div id="cost-panel" class="mt-6 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200/50 dark:border-amber-800/50 hidden">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+              </svg>
+              <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200" data-i18n="cost-estimation">Cost Estimation</h3>
+            </div>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-amber-700 dark:text-amber-300" data-i18n="estimated-tokens">Estimated tokens:</span>
+                <span id="cost-tokens" class="font-mono text-amber-800 dark:text-amber-200">—</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-amber-700 dark:text-amber-300" data-i18n="estimated-cost">Estimated cost:</span>
+                <span id="cost-amount" class="font-mono font-semibold text-amber-800 dark:text-amber-200">$—</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Keyboard shortcuts hint -->
+          <div class="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
+            <p class="text-[10px] text-stone-400 dark:text-stone-600 text-center">
+              Press <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded text-[9px] font-mono">?</kbd> for keyboard shortcuts
+            </p>
+          </div>
         </section>
 
         <!-- Right Column: Tasks & Formats -->
@@ -236,15 +299,34 @@
                                 <div id="stats-progress-bar" class="bg-gradient-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 shadow-[0_0_10px_rgba(251,191,36,0.5)]" style="width: 0%"></div>
                             </div>
                         </div>
+                        <div class="mt-4 flex gap-2 justify-end relative z-10">
+                            <button id="export-csv-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50" disabled>
+                                Export CSV
+                            </button>
+                            <button id="export-json-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50" disabled>
+                                Export JSON
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="preview-section" class="mt-6 hidden">
-                    <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider mb-3 flex justify-between items-center">
-                        <span>Live Preview</span>
-                        <span id="preview-status" class="text-[10px] text-amber-500 font-mono bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/30">IDLE</span>
-                    </h3>
-                    <div class="bg-stone-50 dark:bg-stone-950 rounded-xl h-80 overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-inner flex flex-col-reverse p-4 font-mono text-sm leading-relaxed custom-scrollbar" id="preview-container">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <span>Live Preview</span>
+                            <span id="preview-status" class="text-[10px] text-amber-500 font-mono bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/30">IDLE</span>
+                        </h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="preview-search" placeholder="Search..." class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-32 placeholder-stone-400">
+                            <select id="preview-filter" class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-600 dark:text-stone-300">
+                                <option value="all">All</option>
+                                <option value="source">Source Only</option>
+                                <option value="target">Target Only</option>
+                                <option value="warnings">Warnings Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-stone-50 dark:bg-stone-950 rounded-xl h-80 overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-inner flex flex-col p-4 font-mono text-sm leading-relaxed custom-scrollbar relative" id="preview-container">
                         <!-- Rows injected here -->
                     </div>
                 </div>

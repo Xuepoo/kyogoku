@@ -20,7 +20,7 @@ pub struct I18n {
 impl I18n {
     pub fn new() -> Self {
         let mut bundles = HashMap::new();
-        let langs = vec!["en-US", "zh-CN"];
+        let langs = vec!["en-US", "zh-CN", "ja-JP"];
         
         for lang in langs {
             let lang_id: LanguageIdentifier = lang.parse().expect("Failed to parse language ID");
@@ -70,6 +70,10 @@ impl I18n {
         }
         key.to_string()
     }
+
+    pub fn get_lang(&self) -> &str {
+        &self.current_lang
+    }
 }
 
 static INSTANCE: OnceLock<Mutex<I18n>> = OnceLock::new();
@@ -84,6 +88,18 @@ pub fn set_locale(lang: &str) {
             i18n.set_lang(lang);
         }
     }
+}
+
+pub fn get_locale() -> String {
+    if INSTANCE.get().is_none() {
+        init();
+    }
+    if let Some(lock) = INSTANCE.get() {
+        if let Ok(i18n) = lock.lock() {
+            return i18n.get_lang().to_string();
+        }
+    }
+    "en-US".to_string()
 }
 
 pub fn translate(key: &str) -> String {

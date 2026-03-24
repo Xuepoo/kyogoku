@@ -30,3 +30,20 @@ status-failed = Failed
 # Messages
 msg-upload-hint = Click to upload files
 msg-drag-hint = or drag and drop multiple files here
+
+# New Keys
+settings = Settings
+api-provider = API Provider
+language = Language
+output-dir = Output Directory
+select = Select...
+estimated-cost = Estimated Cost
+theme = Theme
+shortcuts = Shortcuts
+export-stats = Export Statistics
+export-csv = Export as CSV
+export-json = Export as JSON
+cost-total = Total Cost
+cost-input = Input Tokens
+cost-output = Output Tokens
+cost-provider = Provider Rate
