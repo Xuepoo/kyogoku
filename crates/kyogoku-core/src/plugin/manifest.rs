@@ -6,18 +6,15 @@ use std::path::PathBuf;
 /// Type of plugin binary
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum PluginType {
     /// Native dynamic library
     Native,
     /// WebAssembly module
+    #[default]
     Wasm,
 }
 
-impl Default for PluginType {
-    fn default() -> Self {
-        Self::Wasm
-    }
-}
 
 /// Plugin manifest structure (plugin.toml)
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -106,12 +106,11 @@ async fn translate_file(
     }
 
     // Load Glossary
-    if let Some(ref path) = config.project.glossary_path {
-        if path.exists() {
+    if let Some(ref path) = config.project.glossary_path
+        && path.exists() {
             let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
             engine = engine.with_glossary(glossary);
         }
-    }
 
     // Initialize RAG
     #[cfg(feature = "rag")]
@@ -482,12 +481,11 @@ async fn translate_single_file(
     }
 
     // Load Glossary
-    if let Some(ref path) = config.project.glossary_path {
-        if path.exists() {
+    if let Some(ref path) = config.project.glossary_path
+        && path.exists() {
             let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
             engine = engine.with_glossary(glossary);
         }
-    }
 
     // Initialize RAG
     #[cfg(feature = "rag")]
@@ -607,12 +605,11 @@ fn translate_text(key: String) -> Result<String, String> {
 fn get_glossary(state: State<AppState>) -> Result<Vec<GlossaryEntry>, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
 
-    if let Some(ref path) = config.project.glossary_path {
-        if path.exists() {
+    if let Some(ref path) = config.project.glossary_path
+        && path.exists() {
             let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
             return Ok(glossary.entries().into_iter().cloned().collect());
         }
-    }
     Ok(vec![])
 }
 

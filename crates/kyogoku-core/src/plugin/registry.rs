@@ -11,13 +11,19 @@ use kyogoku_parser::{Parser, TranslationBlock};
 
 use super::{PluginInfo, PluginLoader};
 
+/// Type alias for plugin parse function
+type ParseFn = Box<dyn Fn(&[u8]) -> Result<Vec<TranslationBlock>> + Send + Sync>;
+
+/// Type alias for plugin serialize function
+type SerializeFn = Box<dyn Fn(&[TranslationBlock], &[u8]) -> Result<Vec<u8>> + Send + Sync>;
+
 /// A loaded plugin that implements the Parser trait.
 pub struct LoadedPlugin {
     pub info: PluginInfo,
     // For now, we'll use a simple function pointer approach
     // WASM runtime will be added in a follow-up task
-    parse_fn: Option<Box<dyn Fn(&[u8]) -> Result<Vec<TranslationBlock>> + Send + Sync>>,
-    serialize_fn: Option<Box<dyn Fn(&[TranslationBlock], &[u8]) -> Result<Vec<u8>> + Send + Sync>>,
+    parse_fn: Option<ParseFn>,
+    serialize_fn: Option<SerializeFn>,
 }
 
 impl LoadedPlugin {

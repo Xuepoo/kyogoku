@@ -98,7 +98,7 @@ mod parsers {
         let trimmed = input.trim();
 
         // Check if it's reserved keyword
-        if let Ok(_) = is_reserved_keyword(trimmed) {
+        if is_reserved_keyword(trimmed).is_ok() {
             return Err(nom::Err::Error(nom::error::Error::new(
                 input,
                 nom::error::ErrorKind::TooLarge,
@@ -106,22 +106,21 @@ mod parsers {
         }
 
         // Try narration first (pure quoted string)
-        if trimmed.starts_with('"') || trimmed.starts_with('\'') {
-            if let Ok((rest, (text, quote))) = quoted_string(trimmed) {
+        if (trimmed.starts_with('"') || trimmed.starts_with('\''))
+            && let Ok((rest, (text, quote))) = quoted_string(trimmed) {
                 let rest = rest.trim();
                 // Check that it's not followed by : (which would be menu)
                 if !rest.starts_with(':') && !rest.contains('=') {
                     return Ok(("", (None, text, quote)));
                 }
             }
-        }
 
         // Try character dialogue: speaker "text"
         if let Some(first_quote_pos) = trimmed.find('"').or_else(|| trimmed.find('\'')) {
             let before_quote = &trimmed[..first_quote_pos];
             // Check no = before quote (would be assignment)
-            if !before_quote.contains('=') && !before_quote.contains("\"\"\"") && !before_quote.contains("'''") {
-                if let Some(last_space) = before_quote.rfind(' ') {
+            if !before_quote.contains('=') && !before_quote.contains("\"\"\"") && !before_quote.contains("'''")
+                && let Some(last_space) = before_quote.rfind(' ') {
                     let speaker = before_quote[..last_space].trim();
                     let quote_part = before_quote[last_space..].trim();
                     if !speaker.is_empty() && quote_part.is_empty() {
@@ -138,7 +137,6 @@ mod parsers {
                         }
                     }
                 }
-            }
         }
 
         Err(nom::Err::Error(nom::error::Error::new(
@@ -216,8 +214,7 @@ impl Parser for RpyParser {
             // Try parsing as multiline dialogue first
             if let Some(element) =
                 self.try_parse_multiline_dialogue(line, &lines, idx)
-            {
-                if let Some((speaker, text, quote, start, end)) =
+                && let Some((speaker, text, quote, start, end)) =
                     match element {
                         RpyElement::MultilineDialogue(s, t, q, st, ed) => Some((s, t, q, st, ed)),
                         _ => None,
@@ -236,7 +233,6 @@ impl Parser for RpyParser {
                     idx = end + 1;
                     continue;
                 }
-            }
 
             // Try menu choice
             #[cfg(feature = "rpy")]
@@ -321,9 +317,7 @@ impl Parser for RpyParser {
                                 end_line_text.find(quote_str).unwrap_or(0)
                             };
 
-                            let suffix = if start_line == end_line && end_quote_pos > start_quote_pos {
-                                &end_line_text[end_quote_pos..]
-                            } else if start_line != end_line {
+                            let suffix = if start_line != end_line || end_quote_pos > start_quote_pos {
                                 &end_line_text[end_quote_pos..]
                             } else {
                                 ""
@@ -347,8 +341,7 @@ impl Parser for RpyParser {
                         .get("line")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as usize)
-                    {
-                        if let Some(line_text) = lines.get_mut(line_num) {
+                        && let Some(line_text) = lines.get_mut(line_num) {
                             let quote_str = block
                                 .metadata
                                 .get("quote")
@@ -361,7 +354,6 @@ impl Parser for RpyParser {
                                 *line_text = new_line;
                             }
                         }
-                    }
                 }
             }
         }
@@ -391,9 +383,9 @@ impl RpyParser {
         }
 
         // Look for triple quotes
-        let (quote_type, quote_str) = if let Some(_) = trimmed.find("\"\"\"") {
+        let (quote_type, quote_str) = if trimmed.contains("\"\"\"") {
             (MultilineQuote::DoubleTriple, "\"\"\"")
-        } else if let Some(_) = trimmed.find("'''") {
+        } else if trimmed.contains("'''") {
             (MultilineQuote::SingleTriple, "'''")
         } else {
             return None;
@@ -429,8 +421,7 @@ impl RpyParser {
         
         let mut end_idx = start_idx;
 
-        for i in (start_idx + 1)..all_lines.len() {
-            let next_line = all_lines[i];
+        for (i, next_line) in all_lines.iter().enumerate().skip(start_idx + 1) {
             let next_trimmed = next_line.trim();
 
             if let Some(close_pos) = next_trimmed.find(quote_str) {

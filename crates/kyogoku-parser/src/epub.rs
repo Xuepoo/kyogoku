@@ -293,7 +293,7 @@ fn serialize_xhtml(content: &str, blocks: &[&TranslationBlock]) -> Result<String
                                 if !p_text.trim().is_empty() {
                                     if let Some(block) = block_iter.next() {
                                         writer.write_event(Event::Text(BytesText::new(
-                                            &block.output(),
+                                            block.output(),
                                         )))?;
                                     } else {
                                         writer.write_event(Event::Text(BytesText::new(&p_text)))?;

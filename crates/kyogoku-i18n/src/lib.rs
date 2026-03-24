@@ -17,6 +17,12 @@ pub struct I18n {
     current_lang: String,
 }
 
+impl Default for I18n {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl I18n {
     pub fn new() -> Self {
         let mut bundles = HashMap::new();

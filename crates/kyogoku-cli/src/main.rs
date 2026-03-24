@@ -157,9 +157,17 @@ async fn main() -> Result<()> {
             format,
             json,
         } => {
-            commands::translate::run(
-                input, output, from, to, glossary, no_cache, dry_run, format, json,
-            )
+            commands::translate::run(commands::translate::TranslateOpts {
+                input,
+                output,
+                from,
+                to,
+                glossary_path: glossary,
+                no_cache,
+                dry_run,
+                format,
+                json_output: json,
+            })
             .await
         }
         Commands::Cache { action } => match action {
