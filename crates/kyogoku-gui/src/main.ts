@@ -20,6 +20,7 @@ interface TranslationConfig {
 
 interface AdvancedConfig {
     max_concurrency: number;
+    batch_size: number;
     allocator?: string | null;
 }
 
@@ -49,11 +50,13 @@ interface Config {
 // --- DOM Elements ---
 
 const apiProvider = document.querySelector("#api-provider") as HTMLSelectElement;
+const apiBase = document.querySelector("#api-base") as HTMLInputElement;
 const apiKey = document.querySelector("#api-key") as HTMLInputElement;
 const apiModel = document.querySelector("#api-model") as HTMLInputElement;
 const translationStyle = document.querySelector("#translation-style") as HTMLSelectElement;
 const contextSize = document.querySelector("#context-size") as HTMLInputElement;
 const maxConcurrency = document.querySelector("#max-concurrency") as HTMLInputElement;
+const batchSize = document.querySelector("#batch-size") as HTMLInputElement;
 
 // RAG Elements
 const ragEnabled = document.querySelector("#rag-enabled") as HTMLInputElement;
@@ -82,10 +85,12 @@ async function loadConfig() {
         // Populate form
         if (apiProvider) apiProvider.value = config.api.provider;
         if (apiKey) apiKey.value = config.api.api_key || "";
+        if (apiBase) apiBase.value = config.api.api_base || "";
         if (apiModel) apiModel.value = config.api.model;
         if (translationStyle) translationStyle.value = config.translation.style;
         if (contextSize) contextSize.value = config.translation.context_size.toString();
         if (maxConcurrency) maxConcurrency.value = config.advanced.max_concurrency.toString();
+        if (batchSize) batchSize.value = (config.advanced.batch_size || 5).toString();
 
         // RAG Config
         if (ragEnabled) {
@@ -125,6 +130,7 @@ async function saveConfig() {
             ...currentConfig.api,
             provider: apiProvider.value,
             api_key: apiKey.value || null,
+            api_base: apiBase.value || undefined,
             model: apiModel.value,
         },
         translation: {
@@ -135,6 +141,7 @@ async function saveConfig() {
         advanced: {
             ...currentConfig.advanced,
             max_concurrency: parseInt(maxConcurrency.value, 10),
+            batch_size: parseInt(batchSize.value, 10),
         },
         project: currentConfig.project, // Keep existing project config
         rag: {
