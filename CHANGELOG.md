@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-24
+
+### Added
+- **Plugin System**: Extensible architecture for custom file format parsers.
+  * Plugin trait with `parse()` and `serialize()` methods.
+  * Auto-discovery from `~/.config/kyogoku/plugins/` and `./kyogoku-plugins/`.
+  * Manifest-based plugin metadata (`plugin.toml`).
+  * CLI commands: `kyogoku plugin list/info/dirs`.
+  * WASM runtime support via wasmtime (optional feature: `wasm-plugins`).
+  * Example CSV parser plugin demonstrating plugin development.
+- **GUI Improvements**:
+  * Virtual scrolling for preview panel (renders only visible rows).
+  * Performance optimization for large documents (1000+ blocks).
+- **Parser Enhancements**:
+  * Ren'Py parser with multiline dialogue support (triple-quoted strings).
+  * Python block skipping in Ren'Py scripts.
+  * Improved ASS parser tag handling and metadata preservation.
+
+### Fixed
+- All clippy warnings resolved (type complexity, redundant patterns, parameter count).
+- AssTimestamp shadowing Display trait (removed redundant `to_string` method).
+- Collapsible if/else chains in Ren'Py parser simplified.
+- Needless range loop in multiline dialogue parsing.
+
+### Changed
+- Translate command refactored with `TranslateOpts` struct (reduced from 9 to 1 parameter).
+- Improved parameter types: `&PathBuf` → `&Path` where appropriate.
+
 ## [0.3.0] - 2026-03-23
 
 ### Added
