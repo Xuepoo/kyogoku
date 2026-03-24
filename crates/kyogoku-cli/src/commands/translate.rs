@@ -205,7 +205,12 @@ async fn run_inner(
             // In dry run mode, just show what would be translated
             if !json_output {
                 println!("  Would translate {} blocks:", needs_translation);
-                for (i, block) in blocks.iter().filter(|b| b.needs_translation()).take(5).enumerate() {
+                for (i, block) in blocks
+                    .iter()
+                    .filter(|b| b.needs_translation())
+                    .take(5)
+                    .enumerate()
+                {
                     let preview = if block.source.len() > 60 {
                         format!("{}...", &block.source[..60])
                     } else {

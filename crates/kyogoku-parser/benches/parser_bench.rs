@@ -1,10 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kyogoku_parser::ParserRegistry;
 use std::path::Path;
 
 fn bench_parsers(c: &mut Criterion) {
     let registry = ParserRegistry::new();
-    
+
     // We include bytes relative to the source file
     // benches/parser_bench.rs -> ../tests/fixtures/...
     let rpy_bytes = include_bytes!("../tests/fixtures/games/basic_dialogue.rpy");
@@ -41,7 +41,7 @@ fn bench_parsers(c: &mut Criterion) {
             parser.parse(black_box(json_bytes)).unwrap();
         })
     });
-    
+
     group.finish();
 }
 

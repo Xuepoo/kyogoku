@@ -103,7 +103,8 @@ Hello, world!
 2
 00:00:05.000 --> 00:00:08.000 align:start
 This is <b>styled</b> text.
-"#.as_bytes();
+"#
+    .as_bytes();
 
     let registry = ParserRegistry::new();
     let parser = registry

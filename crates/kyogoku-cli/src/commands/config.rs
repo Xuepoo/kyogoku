@@ -37,9 +37,22 @@ pub async fn set(key: &str, value: &str) -> Result<()> {
                 .map_err(|_| anyhow::anyhow!("Invalid number: {}", value))?;
         }
         "advanced.max_concurrency" => {
-            config.advanced.max_concurrency = value
+            let n = value
                 .parse()
-                .map_err(|_| anyhow::anyhow!("Invalid number: {}", value))?;
+                .map_err(|_| anyhow::anyhow!("Invalid number"))?;
+            config.advanced.max_concurrency = n;
+        }
+        "advanced.batch_size" => {
+            let n = value
+                .parse()
+                .map_err(|_| anyhow::anyhow!("Invalid number"))?;
+            config.advanced.batch_size = n;
+        }
+        "rag.enabled" => {
+            let b = value
+                .parse()
+                .map_err(|_| anyhow::anyhow!("Invalid boolean"))?;
+            config.rag.enabled = b;
         }
         _ => bail!("Unknown config key: {}", key),
     }

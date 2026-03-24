@@ -94,7 +94,7 @@ impl TranslationEngine {
         if let Some(ref cache) = self.cache {
             cache.set(&block.id, &translation)?;
         }
-        
+
         // Update vector store (async background)
         if let Some(ref model) = self.embedding_model
             && let Some(ref store) = self.vector_store
@@ -104,19 +104,17 @@ impl TranslationEngine {
             let id = block.id.clone();
             let model = model.clone();
             let store = store.clone();
-            
+
             tokio::spawn(async move {
-                let embedding = tokio::task::spawn_blocking(move || {
-                    model.embed(&[source])
-                }).await;
+                let embedding = tokio::task::spawn_blocking(move || model.embed(&[source])).await;
 
                 if let Ok(Ok(embeddings)) = embedding {
                     if let Some(vec) = embeddings.first() {
-                         let mut store = store.lock().unwrap();
-                         // Need to handle error properly in real app
-                         if let Err(e) = store.add(id, vec.clone(), source_for_store) {
-                             tracing::warn!("Failed to add to vector store: {}", e);
-                         }
+                        let mut store = store.lock().unwrap();
+                        // Need to handle error properly in real app
+                        if let Err(e) = store.add(id, vec.clone(), source_for_store) {
+                            tracing::warn!("Failed to add to vector store: {}", e);
+                        }
                     }
                 }
             });
@@ -130,8 +128,9 @@ impl TranslationEngine {
         &self,
         blocks: &mut [TranslationBlock],
         mut on_progress: F,
-    ) -> Result<()> 
-    where F: FnMut(usize, usize, &TranslationBlock)
+    ) -> Result<()>
+    where
+        F: FnMut(usize, usize, &TranslationBlock),
     {
         let total = blocks.iter().filter(|b| b.needs_translation()).count();
         let mut completed = 0;
@@ -146,12 +145,12 @@ impl TranslationEngine {
         for block in blocks.iter_mut() {
             // Check if block needs translation
             let needs_translation = block.needs_translation();
-            
+
             // Try cache if needed
             let mut cached = false;
             if needs_translation {
-                if let Some(ref cache) = self.cache 
-                    && let Some(target) = cache.get(&block.id) 
+                if let Some(ref cache) = self.cache
+                    && let Some(target) = cache.get(&block.id)
                 {
                     block.target = Some(target);
                     cached = true;
@@ -216,18 +215,18 @@ impl TranslationEngine {
     ) -> Result<()> {
         tracing::debug!("Processing batch of {} blocks", batch.len());
         let translations = self.translate_batch_with_context(batch, context).await?;
-        
+
         for (i, translation) in translations.into_iter().enumerate() {
             if i < batch.len() {
                 let block = &mut batch[i];
                 block.target = Some(translation.clone());
-                
+
                 // Update context
                 context.push((block.source.clone(), translation.clone()));
                 if context.len() > self.config.translation.context_size {
                     context.remove(0);
                 }
-                
+
                 // Update cache
                 if let Some(ref cache) = self.cache {
                     let _ = cache.set(&block.id, &translation);
@@ -237,7 +236,7 @@ impl TranslationEngine {
                 // Doing it sequentially here is fine for now
             }
         }
-        
+
         Ok(())
     }
 
@@ -246,6 +245,15 @@ impl TranslationEngine {
         blocks: &[&mut TranslationBlock],
         context: &[(String, String)],
     ) -> Result<Vec<String>> {
+        // Optimization: If only 1 block, use standard single-block translation
+        // This avoids confusion with separators for the model
+        if blocks.len() == 1 {
+            let translation = self
+                .translate_block_with_context(blocks[0], context)
+                .await?;
+            return Ok(vec![translation]);
+        }
+
         // Collect RAG context for the first block (or all?)
         // For simplicity, use the first block's RAG context for the batch
         let rag_context = if let Some(first) = blocks.first() {
@@ -278,6 +286,7 @@ impl TranslationEngine {
         let parts: Vec<String> = response
             .split(separator)
             .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()) // Filter empty parts (handles trailing separators)
             .collect();
 
         // If count mismatch, fallback to individual translation (or just error/warn)
@@ -287,15 +296,15 @@ impl TranslationEngine {
                 blocks.len(),
                 parts.len()
             );
-            
+
             // Fallback: translate one by one
             let mut results = Vec::new();
             // Note: This is recursive but with batch size 1 effectively
             // We can't easily call translate_block_with_context because we are inside the method.
             // But we can just loop here.
             for block in blocks {
-                // We need to rebuild context for each if we want to be precise, 
-                // but here we just reuse the initial context for simplicity 
+                // We need to rebuild context for each if we want to be precise,
+                // but here we just reuse the initial context for simplicity
                 // (or we can't because we are in a &self method, not modifying context).
                 // Actually, translate_block_with_context does not modify context.
                 let t = self.translate_block_with_context(block, context).await?;
@@ -317,8 +326,12 @@ impl TranslationEngine {
 
         // Glossary (use first block's source for glossary matching, or combine?)
         // Better: combine all sources
-        let combined_source: String = blocks.iter().map(|b| b.source.as_str()).collect::<Vec<_>>().join("\n");
-        
+        let combined_source: String = blocks
+            .iter()
+            .map(|b| b.source.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+
         if let Some(ref glossary) = self.glossary
             && let Some(glossary_text) = glossary.format_for_prompt(&combined_source)
         {
@@ -345,7 +358,7 @@ impl TranslationEngine {
         }
 
         prompt.push_str("请按顺序翻译以下文本片段，每个结果之间必须用 <<<SEPARATOR>>> 分隔（不要包含原文）：\n\n");
-        
+
         for (i, block) in blocks.iter().enumerate() {
             if let Some(ref speaker) = block.speaker {
                 prompt.push_str(&format!("[片段{}] (说话人: {})\n", i + 1, speaker));
@@ -355,7 +368,7 @@ impl TranslationEngine {
             prompt.push_str(&block.source);
             prompt.push_str("\n\n");
         }
-        
+
         prompt
     }
 
@@ -407,26 +420,25 @@ impl TranslationEngine {
             let id = block.id.clone();
             let model = model.clone();
             let store = store.clone();
-            
+
             // Run embedding in background to avoid blocking translation flow too much
             tokio::spawn(async move {
                 // Compute embedding
                 // Note: embed is sync/blocking, so use spawn_blocking
                 let source_for_embed = source.clone();
-                let embedding = tokio::task::spawn_blocking(move || {
-                    model.embed(&[source_for_embed])
-                }).await;
+                let embedding =
+                    tokio::task::spawn_blocking(move || model.embed(&[source_for_embed])).await;
 
                 if let Ok(Ok(embeddings)) = embedding {
                     if let Some(vec) = embeddings.first() {
-                         let mut store = store.lock().unwrap();
-                         if let Err(e) = store.add(id, vec.clone(), source) {
-                             tracing::warn!("Failed to add vector to store: {}", e);
-                         } else {
-                             // Auto-save occasionally? For now, maybe just keep in memory until explicit save?
-                             // Or save on every add (slow).
-                             // Ideally, save periodically.
-                         }
+                        let mut store = store.lock().unwrap();
+                        if let Err(e) = store.add(id, vec.clone(), source) {
+                            tracing::warn!("Failed to add vector to store: {}", e);
+                        } else {
+                            // Auto-save occasionally? For now, maybe just keep in memory until explicit save?
+                            // Or save on every add (slow).
+                            // Ideally, save periodically.
+                        }
                     }
                 }
             });
@@ -447,9 +459,7 @@ impl TranslationEngine {
             let store = store.clone();
 
             // Compute embedding
-            let embedding = tokio::task::spawn_blocking(move || {
-                model.embed(&[source])
-            }).await??;
+            let embedding = tokio::task::spawn_blocking(move || model.embed(&[source])).await??;
 
             if let Some(query_vec) = embedding.first() {
                 // Search vector store
@@ -624,8 +634,8 @@ mod tests {
     #[tokio::test]
     async fn test_translate_blocks_batching() {
         let server = MockServer::start().await;
-        
-        // Expect 2 requests: 
+
+        // Expect 2 requests:
         // 1. Batch of 2 blocks
         // 2. Batch of 1 block
         Mock::given(method("POST"))

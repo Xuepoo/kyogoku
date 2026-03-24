@@ -1,16 +1,15 @@
 use kyogoku_core::{
+    Glossary, TranslationCache, TranslationEngine,
     config::Config,
     rag::{
         embeddings::EmbeddingModel,
         vectordb::{SimpleVectorStore, VectorStore},
     },
-    Glossary, TranslationCache, TranslationEngine,
 };
 use kyogoku_parser::ParserRegistry;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, State, Window};
-
 
 struct AppState {
     config: Mutex<Config>,
@@ -25,13 +24,13 @@ fn get_config(state: State<AppState>) -> Result<Config, String> {
 #[tauri::command]
 fn save_config(state: State<AppState>, new_config: Config) -> Result<(), String> {
     let mut config = state.config.lock().map_err(|e| e.to_string())?;
-    
+
     // Update memory state
     *config = new_config.clone();
-    
+
     // Persist to disk
     config.save().map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
@@ -57,8 +56,7 @@ async fn translate_file(
     }
 
     // Initialize Engine
-    let mut engine = TranslationEngine::new(config.clone())
-        .map_err(|e| e.to_string())?;
+    let mut engine = TranslationEngine::new(config.clone()).map_err(|e| e.to_string())?;
 
     // Enable Cache
     if let Ok(cache) = TranslationCache::open_default() {
@@ -68,8 +66,8 @@ async fn translate_file(
     // Load Glossary
     if let Some(ref path) = config.project.glossary_path {
         if path.exists() {
-             let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
-             engine = engine.with_glossary(glossary);
+            let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
+            engine = engine.with_glossary(glossary);
         }
     }
 
@@ -87,7 +85,10 @@ async fn translate_file(
                                 // Load vector store
                                 let mut store = SimpleVectorStore::new(vector_store_path);
                                 if let Err(e) = store.load() {
-                                    eprintln!("Failed to load vector store (starting fresh): {}", e);
+                                    eprintln!(
+                                        "Failed to load vector store (starting fresh): {}",
+                                        e
+                                    );
                                 }
                                 let store = Arc::new(Mutex::new(store));
                                 engine = engine.with_rag(model, store);
@@ -105,9 +106,10 @@ async fn translate_file(
     // Parse
     let content = std::fs::read(&path).map_err(|e| e.to_string())?;
     let registry = ParserRegistry::new();
-    let parser = registry.get_parser(&path)
+    let parser = registry
+        .get_parser(&path)
         .ok_or_else(|| format!("No parser found for file: {}", file_path))?;
-    
+
     let mut blocks = parser.parse(&content).map_err(|e| e.to_string())?;
     let total_blocks = blocks.iter().filter(|b| b.needs_translation()).count();
 
@@ -115,21 +117,31 @@ async fn translate_file(
         return Ok("No translation needed".to_string());
     }
 
-    window.emit("translation-start", total_blocks).map_err(|e| e.to_string())?;
+    window
+        .emit("translation-start", total_blocks)
+        .map_err(|e| e.to_string())?;
 
     // Translate
     let window_clone = window.clone();
-    engine.translate_blocks(&mut blocks, move |completed, total, block| {
-        let _ = window_clone.emit("translation-progress", TranslationProgressEvent {
-            completed,
-            total,
-            source: block.source.clone(),
-            target: block.target.clone().unwrap_or_default(),
-        });
-    }).await.map_err(|e| e.to_string())?;
+    engine
+        .translate_blocks(&mut blocks, move |completed, total, block| {
+            let _ = window_clone.emit(
+                "translation-progress",
+                TranslationProgressEvent {
+                    completed,
+                    total,
+                    source: block.source.clone(),
+                    target: block.target.clone().unwrap_or_default(),
+                },
+            );
+        })
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Serialize
-    let output_content = parser.serialize(&blocks, &content).map_err(|e| e.to_string())?;
+    let output_content = parser
+        .serialize(&blocks, &content)
+        .map_err(|e| e.to_string())?;
 
     // Write Output
     let file_stem = path.file_stem().unwrap().to_string_lossy();
@@ -140,7 +152,9 @@ async fn translate_file(
     std::fs::write(&output_path, output_content).map_err(|e| e.to_string())?;
 
     let output_str = output_path.to_string_lossy().to_string();
-    window.emit("translation-complete", &output_str).map_err(|e| e.to_string())?;
+    window
+        .emit("translation-complete", &output_str)
+        .map_err(|e| e.to_string())?;
 
     Ok(output_str)
 }
@@ -159,7 +173,11 @@ pub fn run() {
         .manage(AppState {
             config: Mutex::new(config),
         })
-        .invoke_handler(tauri::generate_handler![get_config, save_config, translate_file])
+        .invoke_handler(tauri::generate_handler![
+            get_config,
+            save_config,
+            translate_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
