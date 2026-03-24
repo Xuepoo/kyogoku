@@ -1,14 +1,17 @@
-use kyogoku_core::{
-    Glossary, TranslationCache, TranslationEngine,
-    config::Config,
-    rag::{
-        embeddings::EmbeddingModel,
-        vectordb::{SimpleVectorStore, VectorStore},
-    },
+use kyogoku_core::{Glossary, TranslationCache, TranslationEngine, config::Config};
+
+#[cfg(feature = "rag")]
+use kyogoku_core::rag::{
+    embeddings::EmbeddingModel,
+    vectordb::{SimpleVectorStore, VectorStore},
 };
+
 use kyogoku_parser::ParserRegistry;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+
+#[cfg(feature = "rag")]
+use std::sync::Arc;
 use tauri::{Emitter, State, Window};
 
 struct AppState {
@@ -72,6 +75,7 @@ async fn translate_file(
     }
 
     // Initialize RAG
+    #[cfg(feature = "rag")]
     if config.rag.enabled {
         if let Some(ref model_path) = config.rag.model_path {
             if let Some(ref tokenizer_path) = config.rag.tokenizer_path {
