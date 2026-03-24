@@ -11,4 +11,4 @@ pub use api::{ApiClient, ChatMessage};
 pub use cache::TranslationCache;
 pub use config::{ApiConfig, ApiProvider, Config, ProjectConfig};
 pub use engine::TranslationEngine;
-pub use glossary::Glossary;
+pub use glossary::{Glossary, GlossaryEntry};

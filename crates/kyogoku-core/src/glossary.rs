@@ -70,6 +70,10 @@ impl Glossary {
         self.entries.is_empty()
     }
 
+    pub fn entries(&self) -> Vec<&GlossaryEntry> {
+        self.entries.values().collect()
+    }
+
     /// Find all glossary entries that appear in the given text
     pub fn find_matches(&self, text: &str) -> Vec<&GlossaryEntry> {
         self.entries

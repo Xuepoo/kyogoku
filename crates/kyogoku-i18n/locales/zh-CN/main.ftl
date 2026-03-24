@@ -30,3 +30,20 @@ status-failed = 失败
 # Messages
 msg-upload-hint = 点击上传文件
 msg-drag-hint = 或拖拽多个文件到此处
+
+# New Keys
+settings = 设置
+api-provider = API 提供商
+language = 语言
+output-dir = 输出目录
+select = 选择...
+estimated-cost = 预估成本
+theme = 主题
+shortcuts = 快捷键
+export-stats = 导出统计
+export-csv = 导出 CSV
+export-json = 导出 JSON
+cost-total = 总成本
+cost-input = 输入 Tokens
+cost-output = 输出 Tokens
+cost-provider = 提供商费率
