@@ -70,11 +70,7 @@ impl ParserRegistry {
     pub fn get_parser_by_extension(&self, ext: &str) -> Option<&dyn Parser> {
         self.parsers
             .iter()
-            .find(|p| {
-                p.extensions()
-                    .iter()
-                    .any(|e| e.eq_ignore_ascii_case(ext))
-            })
+            .find(|p| p.extensions().iter().any(|e| e.eq_ignore_ascii_case(ext)))
             .map(|p| p.as_ref())
     }
 
@@ -109,8 +105,13 @@ impl ParserRegistry {
             .ok_or_else(|| anyhow::anyhow!("No parser found for file: {}", path.display()))?;
 
         // Read template file as bytes
-        let template = std::fs::read(template_path)
-            .map_err(|e| anyhow::anyhow!("Failed to read template file {}: {}", template_path.display(), e))?;
+        let template = std::fs::read(template_path).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to read template file {}: {}",
+                template_path.display(),
+                e
+            )
+        })?;
 
         let output = parser.serialize(blocks, &template)?;
         std::fs::write(path, output)

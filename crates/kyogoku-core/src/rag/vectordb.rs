@@ -45,9 +45,16 @@ impl VectorStore for SimpleVectorStore {
     }
 
     fn search(&self, query: &[f32], limit: usize) -> Result<Vec<(String, f32, String)>> {
-        let mut scores: Vec<(String, f32, String)> = self.vectors
+        let mut scores: Vec<(String, f32, String)> = self
+            .vectors
             .iter()
-            .map(|(id, (vec, source))| (id.clone(), Self::cosine_similarity(query, vec), source.clone()))
+            .map(|(id, (vec, source))| {
+                (
+                    id.clone(),
+                    Self::cosine_similarity(query, vec),
+                    source.clone(),
+                )
+            })
             .collect();
 
         // Sort by score descending
@@ -60,7 +67,8 @@ impl VectorStore for SimpleVectorStore {
     fn save(&self) -> Result<()> {
         let file = File::create(&self.path).context("Failed to create vector store file")?;
         let writer = BufWriter::new(file);
-        bincode::serialize_into(writer, &self.vectors).context("Failed to serialize vector store")?;
+        bincode::serialize_into(writer, &self.vectors)
+            .context("Failed to serialize vector store")?;
         Ok(())
     }
 
@@ -70,7 +78,8 @@ impl VectorStore for SimpleVectorStore {
         }
         let file = File::open(&self.path).context("Failed to open vector store file")?;
         let reader = BufReader::new(file);
-        self.vectors = bincode::deserialize_from(reader).context("Failed to deserialize vector store")?;
+        self.vectors =
+            bincode::deserialize_from(reader).context("Failed to deserialize vector store")?;
         Ok(())
     }
 }

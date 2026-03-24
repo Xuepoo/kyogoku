@@ -37,7 +37,8 @@ impl Parser for JsonParser {
             other => other,
         };
 
-        let output_str = serde_json::to_string_pretty(&output).context("Failed to serialize JSON")?;
+        let output_str =
+            serde_json::to_string_pretty(&output).context("Failed to serialize JSON")?;
         Ok(output_str.into_bytes())
     }
 }
@@ -208,7 +209,8 @@ mod tests {
         let content = r#"{
             "line1": { "original": "Hello", "translation": "" },
             "line2": { "original": "World", "translation": "世界" }
-        }"#.as_bytes();
+        }"#
+        .as_bytes();
 
         let parser = JsonParser;
         let blocks = parser.parse(content).unwrap();

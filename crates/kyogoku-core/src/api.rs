@@ -166,22 +166,24 @@ impl ApiClient {
 /// Check if an error is retryable (rate limit, server error, timeout)
 fn is_retryable_error(err: &str) -> bool {
     let retryable_patterns = [
-        "status 429",     // Rate limit
-        "status 500",     // Internal server error
-        "status 502",     // Bad gateway
-        "status 503",     // Service unavailable
-        "status 504",     // Gateway timeout
-        "timeout",        // Request timeout
-        "connection",     // Connection errors
-        "ETIMEDOUT",      // Network timeout
-        "ECONNRESET",     // Connection reset
-        "ECONNREFUSED",   // Connection refused
-        "temporarily",    // Temporary errors
-        "overloaded",     // Server overloaded
+        "status 429",   // Rate limit
+        "status 500",   // Internal server error
+        "status 502",   // Bad gateway
+        "status 503",   // Service unavailable
+        "status 504",   // Gateway timeout
+        "timeout",      // Request timeout
+        "connection",   // Connection errors
+        "ETIMEDOUT",    // Network timeout
+        "ECONNRESET",   // Connection reset
+        "ECONNREFUSED", // Connection refused
+        "temporarily",  // Temporary errors
+        "overloaded",   // Server overloaded
     ];
 
     let err_lower = err.to_lowercase();
-    retryable_patterns.iter().any(|p| err_lower.contains(&p.to_lowercase()))
+    retryable_patterns
+        .iter()
+        .any(|p| err_lower.contains(&p.to_lowercase()))
 }
 
 /// Calculate exponential backoff delay: 500ms, 1s, 2s, 4s, ... capped at 30s
@@ -321,9 +323,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_retry_on_server_error() {
-        use std::sync::atomic::{AtomicU32, Ordering};
         use std::sync::Arc;
-        
+        use std::sync::atomic::{AtomicU32, Ordering};
+
         let server = MockServer::start().await;
         let call_count = Arc::new(AtomicU32::new(0));
         let call_count_clone = call_count.clone();

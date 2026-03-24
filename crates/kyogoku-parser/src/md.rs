@@ -5,7 +5,7 @@ use crate::block::TranslationBlock;
 use crate::parser::Parser;
 
 /// Markdown parser that preserves frontmatter and code blocks.
-/// 
+///
 /// Frontmatter (YAML/TOML between ---/+++ delimiters) is preserved as-is.
 /// Code blocks (``` or ~~~) are preserved as-is.
 /// Only paragraph text is extracted for translation.
@@ -63,46 +63,44 @@ impl Parser for MdParser {
                         if !paragraph_lines.is_empty() {
                             let text = paragraph_lines.join("\n");
                             if !text.trim().is_empty() {
-                                blocks.push(
-                                    TranslationBlock::new(&text).with_metadata(json!({
-                                        "type": "paragraph",
-                                        "start_line": paragraph_start.unwrap_or(idx) + 1
-                                    })),
-                                );
+                                blocks.push(TranslationBlock::new(&text).with_metadata(json!({
+                                    "type": "paragraph",
+                                    "start_line": paragraph_start.unwrap_or(idx) + 1
+                                })));
                             }
                             paragraph_lines.clear();
                             paragraph_start = None;
                         }
-                        
+
                         state = State::CodeBlock;
-                        code_fence = Some(if trimmed.starts_with("```") { "```" } else { "~~~" });
+                        code_fence = Some(if trimmed.starts_with("```") {
+                            "```"
+                        } else {
+                            "~~~"
+                        });
                     } else if is_structural_line(line) {
                         // Flush paragraph before structural elements
                         if !paragraph_lines.is_empty() {
                             let text = paragraph_lines.join("\n");
                             if !text.trim().is_empty() {
-                                blocks.push(
-                                    TranslationBlock::new(&text).with_metadata(json!({
-                                        "type": "paragraph",
-                                        "start_line": paragraph_start.unwrap_or(idx) + 1
-                                    })),
-                                );
+                                blocks.push(TranslationBlock::new(&text).with_metadata(json!({
+                                    "type": "paragraph",
+                                    "start_line": paragraph_start.unwrap_or(idx) + 1
+                                })));
                             }
                             paragraph_lines.clear();
                             paragraph_start = None;
                         }
-                        
+
                         // Headers are translatable
                         if line.starts_with('#') {
                             let text = line.trim_start_matches('#').trim();
                             if !text.is_empty() {
-                                blocks.push(
-                                    TranslationBlock::new(text).with_metadata(json!({
-                                        "type": "header",
-                                        "line": idx + 1,
-                                        "prefix": extract_header_prefix(line)
-                                    })),
-                                );
+                                blocks.push(TranslationBlock::new(text).with_metadata(json!({
+                                    "type": "header",
+                                    "line": idx + 1,
+                                    "prefix": extract_header_prefix(line)
+                                })));
                             }
                         }
                     } else if line.trim().is_empty() {
@@ -110,12 +108,10 @@ impl Parser for MdParser {
                         if !paragraph_lines.is_empty() {
                             let text = paragraph_lines.join("\n");
                             if !text.trim().is_empty() {
-                                blocks.push(
-                                    TranslationBlock::new(&text).with_metadata(json!({
-                                        "type": "paragraph",
-                                        "start_line": paragraph_start.unwrap_or(idx) + 1
-                                    })),
-                                );
+                                blocks.push(TranslationBlock::new(&text).with_metadata(json!({
+                                    "type": "paragraph",
+                                    "start_line": paragraph_start.unwrap_or(idx) + 1
+                                })));
                             }
                             paragraph_lines.clear();
                             paragraph_start = None;
@@ -135,12 +131,10 @@ impl Parser for MdParser {
         if !paragraph_lines.is_empty() {
             let text = paragraph_lines.join("\n");
             if !text.trim().is_empty() {
-                blocks.push(
-                    TranslationBlock::new(&text).with_metadata(json!({
-                        "type": "paragraph",
-                        "start_line": paragraph_start.unwrap_or(lines.len()) + 1
-                    })),
-                );
+                blocks.push(TranslationBlock::new(&text).with_metadata(json!({
+                    "type": "paragraph",
+                    "start_line": paragraph_start.unwrap_or(lines.len()) + 1
+                })));
             }
         }
 
@@ -183,21 +177,30 @@ impl Parser for MdParser {
                 }
                 State::Normal => {
                     let trimmed = line.trim_start();
-                    
+
                     if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
                         skip_until_blank = false;
                         in_paragraph = false;
                         output_lines.push(line.to_string());
                         state = State::CodeBlock;
-                        code_fence = Some(if trimmed.starts_with("```") { "```" } else { "~~~" });
+                        code_fence = Some(if trimmed.starts_with("```") {
+                            "```"
+                        } else {
+                            "~~~"
+                        });
                     } else if line.starts_with('#') {
                         skip_until_blank = false;
                         in_paragraph = false;
                         // Find matching header block
                         if block_idx < blocks.len() {
                             let block = &blocks[block_idx];
-                            if block.metadata.get("type").and_then(|v| v.as_str()) == Some("header") {
-                                let prefix = block.metadata.get("prefix").and_then(|v| v.as_str()).unwrap_or("# ");
+                            if block.metadata.get("type").and_then(|v| v.as_str()) == Some("header")
+                            {
+                                let prefix = block
+                                    .metadata
+                                    .get("prefix")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("# ");
                                 output_lines.push(format!("{}{}", prefix, block.output()));
                                 block_idx += 1;
                                 continue;
@@ -213,12 +216,14 @@ impl Parser for MdParser {
                         if skip_until_blank {
                             continue;
                         }
-                        
+
                         if !in_paragraph {
                             // Start of new paragraph - output translated block
                             if block_idx < blocks.len() {
                                 let block = &blocks[block_idx];
-                                if block.metadata.get("type").and_then(|v| v.as_str()) == Some("paragraph") {
+                                if block.metadata.get("type").and_then(|v| v.as_str())
+                                    == Some("paragraph")
+                                {
                                     output_lines.push(block.output().to_string());
                                     block_idx += 1;
                                     in_paragraph = true;
@@ -340,9 +345,11 @@ mod tests {
     #[test]
     fn test_md_preserve_frontmatter() {
         let template = b"---\ntitle: Test\n---\n\n# Header\n";
-        let blocks = vec![TranslationBlock::new("Header")
-            .with_target("标题")
-            .with_metadata(json!({"type": "header", "line": 5, "prefix": "# "}))];
+        let blocks = vec![
+            TranslationBlock::new("Header")
+                .with_target("标题")
+                .with_metadata(json!({"type": "header", "line": 5, "prefix": "# "})),
+        ];
 
         let parser = MdParser;
         let output = parser.serialize(&blocks, template).unwrap();
@@ -355,9 +362,11 @@ mod tests {
     #[test]
     fn test_md_preserve_code_blocks() {
         let template = b"```python\nprint('hello')\n```\n\nText here.\n";
-        let blocks = vec![TranslationBlock::new("Text here.")
-            .with_target("文本在这里。")
-            .with_metadata(json!({"type": "paragraph", "start_line": 5}))];
+        let blocks = vec![
+            TranslationBlock::new("Text here.")
+                .with_target("文本在这里。")
+                .with_metadata(json!({"type": "paragraph", "start_line": 5})),
+        ];
 
         let parser = MdParser;
         let output = parser.serialize(&blocks, template).unwrap();

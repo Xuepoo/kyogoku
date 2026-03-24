@@ -1,6 +1,6 @@
 [package]
 name = "kyogoku-gui"
-version = "0.1.0"
+version = "0.3.1"
 description = "Kyogoku GUI"
 authors = ["xuepoo"]
 edition = "2024"
