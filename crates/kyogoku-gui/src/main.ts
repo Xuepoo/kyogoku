@@ -2,6 +2,37 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 import { listen } from '@tauri-apps/api/event';
 
+// --- Theme ---
+
+function initTheme() {
+    const themeToggle = document.querySelector("#theme-toggle") as HTMLButtonElement;
+    
+    if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+    }
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            if (e.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    });
+}
+
 // --- Types ---
 
 interface ApiConfig {
@@ -199,6 +230,199 @@ const previewContainer = document.querySelector("#preview-container") as HTMLEle
 const previewStatus = document.querySelector("#preview-status") as HTMLElement;
 const recentActivity = document.querySelector("#recent-activity") as HTMLElement;
 
+// --- Batch File Queue ---
+
+const fileQueueSection = document.querySelector("#file-queue-section") as HTMLElement;
+const fileQueueContainer = document.querySelector("#file-queue-container") as HTMLElement;
+const startBatchBtn = document.querySelector("#start-batch-btn") as HTMLButtonElement;
+const clearQueueBtn = document.querySelector("#clear-queue-btn") as HTMLButtonElement;
+
+// --- Statistics Panel ---
+
+const statsPanel = document.querySelector("#stats-panel") as HTMLElement;
+const statsFilesCompleted = document.querySelector("#stats-files-completed") as HTMLElement;
+const statsFilesTotal = document.querySelector("#stats-files-total") as HTMLElement;
+const statsBlocksCompleted = document.querySelector("#stats-blocks-completed") as HTMLElement;
+const statsBlocksTotal = document.querySelector("#stats-blocks-total") as HTMLElement;
+const statsElapsed = document.querySelector("#stats-elapsed") as HTMLElement;
+const statsEta = document.querySelector("#stats-eta") as HTMLElement;
+const statsProgressBar = document.querySelector("#stats-progress-bar") as HTMLElement;
+
+interface FileQueueItem {
+    id: string;
+    file_path: string;
+    file_name: string;
+    status: 'pending' | 'processing' | 'complete' | 'failed';
+    word_count?: number;
+    progress: number;
+    error_message?: string;
+}
+
+interface BatchStats {
+    total_files: number;
+    completed_files: number;
+    failed_files: number;
+    total_blocks: number;
+    completed_blocks: number;
+    elapsed_seconds: number;
+    estimated_remaining_seconds?: number;
+}
+
+let fileQueue: FileQueueItem[] = [];
+
+function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateStatsPanel(stats: BatchStats) {
+    if (statsFilesCompleted) statsFilesCompleted.textContent = stats.completed_files.toString();
+    if (statsFilesTotal) statsFilesTotal.textContent = stats.total_files.toString();
+    if (statsBlocksCompleted) statsBlocksCompleted.textContent = stats.completed_blocks.toString();
+    if (statsBlocksTotal) statsBlocksTotal.textContent = stats.total_blocks.toString();
+    if (statsElapsed) statsElapsed.textContent = formatTime(stats.elapsed_seconds);
+    if (statsEta) {
+        statsEta.textContent = stats.estimated_remaining_seconds 
+            ? formatTime(stats.estimated_remaining_seconds)
+            : '--:--';
+    }
+    
+    // Update progress bar
+    if (statsProgressBar && stats.total_blocks > 0) {
+        const percent = (stats.completed_blocks / stats.total_blocks) * 100;
+        statsProgressBar.style.width = `${percent}%`;
+    }
+}
+
+async function addFilesToQueue(filePaths: string[]) {
+    try {
+        await invoke<FileQueueItem[]>("add_files_to_queue", { filePaths });
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+        
+        if (fileQueueSection) {
+            fileQueueSection.classList.remove("hidden");
+        }
+        if (recentActivity) {
+            recentActivity.classList.add("hidden");
+        }
+    } catch (e) {
+        console.error("Failed to add files to queue:", e);
+        setStatus(`Error: ${e}`, "error");
+    }
+}
+
+async function removeFileFromQueue(fileId: string) {
+    try {
+        await invoke("remove_from_queue", { fileId });
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+        
+        if (fileQueue.length === 0 && fileQueueSection) {
+            fileQueueSection.classList.add("hidden");
+            if (recentActivity) {
+                recentActivity.classList.remove("hidden");
+            }
+        }
+    } catch (e) {
+        console.error("Failed to remove file:", e);
+    }
+}
+
+async function clearQueue() {
+    try {
+        await invoke("clear_queue");
+        fileQueue = [];
+        renderFileQueue();
+        
+        if (fileQueueSection) {
+            fileQueueSection.classList.add("hidden");
+        }
+        if (recentActivity) {
+            recentActivity.classList.remove("hidden");
+        }
+    } catch (e) {
+        console.error("Failed to clear queue:", e);
+    }
+}
+
+function renderFileQueue() {
+    if (!fileQueueContainer) return;
+    
+    if (fileQueue.length === 0) {
+        fileQueueContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No files in queue</p>';
+        return;
+    }
+    
+    const statusColors = {
+        pending: 'bg-gray-600 text-gray-300',
+        processing: 'bg-blue-600 text-white animate-pulse',
+        complete: 'bg-green-600 text-white',
+        failed: 'bg-red-600 text-white'
+    };
+    
+    const statusIcons = {
+        pending: '⏳',
+        processing: '🔄',
+        complete: '✅',
+        failed: '❌'
+    };
+    
+    fileQueueContainer.innerHTML = fileQueue.map(item => `
+        <div class="bg-gray-900/50 rounded p-3 flex items-center justify-between border border-gray-700 hover:border-gray-600 transition">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="${statusColors[item.status]} px-2 py-0.5 rounded text-xs font-mono">
+                        ${statusIcons[item.status]} ${item.status.toUpperCase()}
+                    </span>
+                    <span class="text-gray-300 text-sm font-medium truncate">${item.file_name}</span>
+                </div>
+                ${item.word_count ? `<p class="text-xs text-gray-500">~${item.word_count} blocks</p>` : ''}
+                ${item.status === 'processing' ? `
+                    <div class="mt-2 bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-blue-500 h-full transition-all duration-300" style="width: ${item.progress}%"></div>
+                    </div>
+                ` : ''}
+                ${item.error_message ? `<p class="text-xs text-red-400 mt-1">${item.error_message}</p>` : ''}
+            </div>
+            <button 
+                class="ml-3 text-gray-500 hover:text-red-400 transition" 
+                onclick="window.removeFileFromQueue('${item.id}')"
+                ${item.status === 'processing' ? 'disabled' : ''}
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    `).join('');
+}
+
+async function startBatchTranslation() {
+    try {
+        setStatus("Starting batch translation...");
+        
+        if (startBatchBtn) {
+            startBatchBtn.disabled = true;
+            startBatchBtn.textContent = "⏸ Processing...";
+        }
+        
+        await invoke("start_batch_translation");
+    } catch (e) {
+        setStatus(`Batch translation error: ${e}`, "error");
+        console.error(e);
+        
+        if (startBatchBtn) {
+            startBatchBtn.disabled = false;
+            startBatchBtn.textContent = "▶ Start Batch";
+        }
+    }
+}
+
+// Expose functions to global scope for inline onclick handlers
+(window as any).removeFileFromQueue = removeFileFromQueue;
+
 // --- Recent Activity (localStorage) ---
 
 interface TranslationHistoryItem {
@@ -259,6 +483,7 @@ function renderRecentActivity() {
 // --- Event Listeners ---
 
 window.addEventListener("DOMContentLoaded", async () => {
+    initTheme();
     loadConfig();
 
     if (configForm) {
@@ -285,34 +510,112 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     renderRecentActivity();
+    
+    // Batch queue button handlers
+    if (startBatchBtn) {
+        startBatchBtn.addEventListener("click", () => {
+            startBatchTranslation();
+        });
+    }
+    
+    if (clearQueueBtn) {
+        clearQueueBtn.addEventListener("click", () => {
+            if (confirm("Clear all files from queue?")) {
+                clearQueue();
+            }
+        });
+    }
 
     if (dropZone) {
         dropZone.addEventListener("click", async () => {
             try {
                 const selected = await open({
-                    multiple: false,
+                    multiple: true, // Enable multiple file selection
                     filters: [{
                         name: 'Supported Files',
-                        extensions: ['rpy', 'ass', 'srt', 'vtt', 'epub', 'txt', 'json']
+                        extensions: ['rpy', 'ass', 'srt', 'vtt', 'epub', 'txt', 'json', 'md']
                     }]
                 });
 
                 if (selected === null) return;
                 
-                const filePath = Array.isArray(selected) ? selected[0] : selected;
-                startTranslation(filePath);
+                const filePaths = Array.isArray(selected) ? selected : [selected];
+                await addFilesToQueue(filePaths);
             } catch (e) {
                 console.error("Failed to open file dialog", e);
             }
         });
     }
 
-    // Listen for file drops
+    // Listen for file drops (support multiple files)
     await listen('tauri://file-drop', (event) => {
         const files = event.payload as string[];
         if (files && files.length > 0) {
-            startTranslation(files[0]);
+            addFilesToQueue(files);
         }
+    });
+    
+    // Listen for batch events
+    await listen('batch-started', (event) => {
+        const totalFiles = event.payload as number;
+        setStatus(`Batch started: ${totalFiles} files queued`);
+        
+        if (previewSection) previewSection.classList.remove("hidden");
+        if (previewContainer) previewContainer.innerHTML = "";
+        if (statsPanel) statsPanel.classList.remove("hidden");
+    });
+    
+    await listen('batch-stats', (event) => {
+        const stats = event.payload as BatchStats;
+        updateStatsPanel(stats);
+    });
+    
+    await listen('file-processing', async (event) => {
+        const item = event.payload as FileQueueItem;
+        setStatus(`Processing: ${item.file_name}`);
+        
+        // Update queue display
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+    });
+    
+    await listen('file-complete', async (event) => {
+        const [_fileId, outputPath] = event.payload as [string, string];
+        const filename = outputPath.split('/').pop() || outputPath;
+        
+        setStatus(`✓ Completed: ${filename}`, "success");
+        
+        // Update queue display
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+        
+        addToHistory(filename, 0);
+    });
+    
+    await listen('file-failed', async (event) => {
+        const [_fileId, error] = event.payload as [string, string];
+        setStatus(`✗ Failed: ${error}`, "error");
+        
+        // Update queue display
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+    });
+    
+    await listen('batch-complete', async (event) => {
+        const summary = event.payload as string;
+        setStatus(summary, "success");
+        
+        if (startBatchBtn) {
+            startBatchBtn.disabled = false;
+            startBatchBtn.textContent = "▶ Start Batch";
+        }
+        
+        // Refresh queue
+        fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
+        renderFileQueue();
+        renderRecentActivity();
+        
+        setTimeout(clearStatus, 5000);
     });
 
     // Listen for translation progress
@@ -365,20 +668,3 @@ window.addEventListener("DOMContentLoaded", async () => {
         setTimeout(clearStatus, 5000);
     });
 });
-
-async function startTranslation(filePath: string) {
-    if (!filePath) return;
-    
-    // Check if configured
-    if (!currentConfig?.api.api_key && currentConfig?.api.provider !== "local") {
-        setStatus("Please set an API Key first!", "error");
-        return;
-    }
-
-    setStatus(`Initializing translation for ${filePath}...`);
-    try {
-        await invoke("translate_file", { filePath });
-    } catch (e) {
-        setStatus(`Error: ${e}`, "error");
-    }
-}
