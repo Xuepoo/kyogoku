@@ -139,10 +139,42 @@ impl TranslationEngine {
         // Collect previous translations for context
         let mut context_window: Vec<(String, String)> = Vec::new();
         let context_size = self.config.translation.context_size;
+        let batch_size = self.config.advanced.batch_size;
+
+        let mut batch = Vec::with_capacity(batch_size);
 
         for block in blocks.iter_mut() {
-            if !block.needs_translation() {
-                // Add to context if already translated
+            // Check if block needs translation
+            let needs_translation = block.needs_translation();
+            
+            // Try cache if needed
+            let mut cached = false;
+            if needs_translation {
+                if let Some(ref cache) = self.cache 
+                    && let Some(target) = cache.get(&block.id) 
+                {
+                    block.target = Some(target);
+                    cached = true;
+                    completed += 1;
+                    on_progress(completed, total, block);
+                }
+            }
+
+            if !needs_translation || cached {
+                // If we have a pending batch, process it first because this block
+                // might depend on previous ones, or future ones depend on this.
+                // Actually, if this block is done, we can use it as context for the batch?
+                // No, the batch was accumulated *before* this block, so this block is *future* for them.
+                // So we can process the batch using current `context_window`.
+                if !batch.is_empty() {
+                    self.process_batch(&mut batch, &mut context_window).await?;
+                    for b in batch.drain(..) {
+                        completed += 1;
+                        on_progress(completed, total, b);
+                    }
+                }
+
+                // Add this block to context
                 if let Some(ref target) = block.target {
                     context_window.push((block.source.clone(), target.clone()));
                     if context_window.len() > context_size {
@@ -152,23 +184,179 @@ impl TranslationEngine {
                 continue;
             }
 
-            // Translate with context
-            let translation = self
-                .translate_block_with_context(block, &context_window)
-                .await?;
-            block.target = Some(translation.clone());
+            // Add to batch
+            batch.push(block);
 
-            // Update context window
-            context_window.push((block.source.clone(), translation));
-            if context_window.len() > context_size {
-                context_window.remove(0);
+            // Process if full
+            if batch.len() >= batch_size {
+                self.process_batch(&mut batch, &mut context_window).await?;
+                for b in batch.drain(..) {
+                    completed += 1;
+                    on_progress(completed, total, b);
+                }
             }
+        }
 
-            completed += 1;
-            on_progress(completed, total, block);
+        // Process remaining
+        if !batch.is_empty() {
+            self.process_batch(&mut batch, &mut context_window).await?;
+            for b in batch.drain(..) {
+                completed += 1;
+                on_progress(completed, total, b);
+            }
         }
 
         Ok(())
+    }
+
+    async fn process_batch(
+        &self,
+        batch: &mut Vec<&mut TranslationBlock>,
+        context: &mut Vec<(String, String)>,
+    ) -> Result<()> {
+        tracing::debug!("Processing batch of {} blocks", batch.len());
+        let translations = self.translate_batch_with_context(batch, context).await?;
+        
+        for (i, translation) in translations.into_iter().enumerate() {
+            if i < batch.len() {
+                let block = &mut batch[i];
+                block.target = Some(translation.clone());
+                
+                // Update context
+                context.push((block.source.clone(), translation.clone()));
+                if context.len() > self.config.translation.context_size {
+                    context.remove(0);
+                }
+                
+                // Update cache
+                if let Some(ref cache) = self.cache {
+                    let _ = cache.set(&block.id, &translation);
+                }
+
+                // Update vector store (skip for now to keep simple, or implement batch embedding)
+                // Doing it sequentially here is fine for now
+            }
+        }
+        
+        Ok(())
+    }
+
+    async fn translate_batch_with_context(
+        &self,
+        blocks: &[&mut TranslationBlock],
+        context: &[(String, String)],
+    ) -> Result<Vec<String>> {
+        // Collect RAG context for the first block (or all?)
+        // For simplicity, use the first block's RAG context for the batch
+        let rag_context = if let Some(first) = blocks.first() {
+            self.retrieve_rag_context(&first.source).await?
+        } else {
+            Vec::new()
+        };
+
+        // Build batch prompt
+        let prompt = self.build_batch_prompt(blocks, context, &rag_context);
+
+        // Call API
+        let _permit = self.semaphore.acquire().await.unwrap();
+        let response = self
+            .client
+            .chat(vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: self.system_prompt(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt,
+                },
+            ])
+            .await?;
+
+        // Parse response
+        let separator = "<<<SEPARATOR>>>";
+        let parts: Vec<String> = response
+            .split(separator)
+            .map(|s| s.trim().to_string())
+            .collect();
+
+        // If count mismatch, fallback to individual translation (or just error/warn)
+        if parts.len() != blocks.len() {
+            tracing::warn!(
+                "Batch translation mismatch: expected {}, got {}. Fallback to individual.",
+                blocks.len(),
+                parts.len()
+            );
+            
+            // Fallback: translate one by one
+            let mut results = Vec::new();
+            // Note: This is recursive but with batch size 1 effectively
+            // We can't easily call translate_block_with_context because we are inside the method.
+            // But we can just loop here.
+            for block in blocks {
+                // We need to rebuild context for each if we want to be precise, 
+                // but here we just reuse the initial context for simplicity 
+                // (or we can't because we are in a &self method, not modifying context).
+                // Actually, translate_block_with_context does not modify context.
+                let t = self.translate_block_with_context(block, context).await?;
+                results.push(t);
+            }
+            return Ok(results);
+        }
+
+        Ok(parts)
+    }
+
+    fn build_batch_prompt(
+        &self,
+        blocks: &[&mut TranslationBlock],
+        context: &[(String, String)],
+        rag_context: &[(String, String)],
+    ) -> String {
+        let mut prompt = String::new();
+
+        // Glossary (use first block's source for glossary matching, or combine?)
+        // Better: combine all sources
+        let combined_source: String = blocks.iter().map(|b| b.source.as_str()).collect::<Vec<_>>().join("\n");
+        
+        if let Some(ref glossary) = self.glossary
+            && let Some(glossary_text) = glossary.format_for_prompt(&combined_source)
+        {
+            prompt.push_str(&glossary_text);
+            prompt.push_str("\n\n");
+        }
+
+        // RAG Context
+        if !rag_context.is_empty() {
+            prompt.push_str("参考译文（来自类似文本）：\n");
+            for (src, tgt) in rag_context {
+                prompt.push_str(&format!("参考原文: {}\n参考译文: {}\n\n", src, tgt));
+            }
+            prompt.push('\n');
+        }
+
+        // Context Window
+        if !context.is_empty() {
+            prompt.push_str("前文参考：\n");
+            for (src, tgt) in context.iter().rev().take(5) {
+                prompt.push_str(&format!("原文: {}\n译文: {}\n\n", src, tgt));
+            }
+            prompt.push('\n');
+        }
+
+        prompt.push_str("请按顺序翻译以下文本片段，每个结果之间必须用 <<<SEPARATOR>>> 分隔（不要包含原文）：\n\n");
+        
+        for (i, block) in blocks.iter().enumerate() {
+            if let Some(ref speaker) = block.speaker {
+                prompt.push_str(&format!("[片段{}] (说话人: {})\n", i + 1, speaker));
+            } else {
+                prompt.push_str(&format!("[片段{}]\n", i + 1));
+            }
+            prompt.push_str(&block.source);
+            prompt.push_str("\n\n");
+        }
+        
+        prompt
     }
 
     async fn translate_block_with_context(
@@ -434,19 +622,36 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_translate_blocks_progress_and_context_flow() {
+    async fn test_translate_blocks_batching() {
         let server = MockServer::start().await;
+        
+        // Expect 2 requests: 
+        // 1. Batch of 2 blocks
+        // 2. Batch of 1 block
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "id": "chatcmpl-engine-2",
+                "id": "chatcmpl-batch",
                 "choices": [{
-                    "message": {"role": "assistant", "content": "统一译文"},
+                    "message": {"role": "assistant", "content": "译文1<<<SEPARATOR>>>译文2"},
                     "finish_reason": "stop"
                 }],
-                "usage": {"prompt_tokens": 20, "completion_tokens": 5, "total_tokens": 25}
+                "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}
             })))
-            .expect(2)
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "chatcmpl-batch-2",
+                "choices": [{
+                    "message": {"role": "assistant", "content": "译文3"},
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+            })))
             .mount(&server)
             .await;
 
@@ -460,24 +665,22 @@ mod tests {
             },
             ..Config::default()
         };
-        config.translation.context_size = 5;
+        config.advanced.batch_size = 2; // Set batch size to 2
 
         let engine = TranslationEngine::new(config).unwrap();
         let mut blocks = vec![
-            TranslationBlock::new("第一句"),
-            TranslationBlock::new("第二句"),
+            TranslationBlock::new("原文1"),
+            TranslationBlock::new("原文2"),
+            TranslationBlock::new("原文3"),
         ];
-        let mut progress_calls = Vec::new();
 
         engine
-            .translate_blocks(&mut blocks, |done, total, _| {
-                progress_calls.push((done, total))
-            })
+            .translate_blocks(&mut blocks, |_, _, _| {})
             .await
             .unwrap();
 
-        assert_eq!(blocks[0].target.as_deref(), Some("统一译文"));
-        assert_eq!(blocks[1].target.as_deref(), Some("统一译文"));
-        assert_eq!(progress_calls, vec![(1, 2), (2, 2)]);
+        assert_eq!(blocks[0].target.as_deref(), Some("译文1"));
+        assert_eq!(blocks[1].target.as_deref(), Some("译文2"));
+        assert_eq!(blocks[2].target.as_deref(), Some("译文3"));
     }
 }

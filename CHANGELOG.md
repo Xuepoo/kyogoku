@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-03-23
 
 ### Added
 - **CLI Enhancements**:
@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Preserves YAML/TOML frontmatter unchanged.
   * Skips code blocks (``` and ~~~) from translation.
   * Extracts headers and paragraphs for translation.
+- **Performance**:
+  * Batch request support (default 5 blocks/request) to reduce API calls by ~80%.
 
 ## [0.2.0] - 2026-03-23
 
