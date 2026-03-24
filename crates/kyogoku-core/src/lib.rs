@@ -3,6 +3,7 @@ pub mod cache;
 pub mod config;
 pub mod engine;
 pub mod glossary;
+pub mod plugin;
 
 #[cfg(feature = "rag")]
 pub mod rag;
@@ -12,3 +13,4 @@ pub use cache::TranslationCache;
 pub use config::{ApiConfig, ApiProvider, Config, ProjectConfig};
 pub use engine::TranslationEngine;
 pub use glossary::{Glossary, GlossaryEntry};
+pub use plugin::{Plugin, PluginInfo, PluginLoader, PluginRegistry};

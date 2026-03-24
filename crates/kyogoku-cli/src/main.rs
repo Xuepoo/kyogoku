@@ -74,6 +74,12 @@ enum Commands {
         #[command(subcommand)]
         action: CacheAction,
     },
+
+    /// Manage plugins
+    Plugin {
+        #[command(subcommand)]
+        action: PluginAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -100,6 +106,21 @@ enum CacheAction {
 
     /// Clear the cache
     Clear,
+}
+
+#[derive(Subcommand)]
+enum PluginAction {
+    /// List installed plugins
+    List,
+
+    /// Show plugin details
+    Info {
+        /// Plugin name
+        name: String,
+    },
+
+    /// Show plugin directories
+    Dirs,
 }
 
 #[tokio::main]
@@ -144,6 +165,11 @@ async fn main() -> Result<()> {
         Commands::Cache { action } => match action {
             CacheAction::Stats => commands::cache::stats().await,
             CacheAction::Clear => commands::cache::clear().await,
+        },
+        Commands::Plugin { action } => match action {
+            PluginAction::List => commands::plugin::list().await,
+            PluginAction::Info { name } => commands::plugin::info(&name).await,
+            PluginAction::Dirs => commands::plugin::dirs().await,
         },
     }
 }
