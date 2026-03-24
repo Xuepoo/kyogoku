@@ -1,11 +1,24 @@
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use kyogoku_core::{Config, Glossary, TranslationCache, TranslationEngine};
 use kyogoku_parser::ParserRegistry;
+
+/// Translation command options
+pub struct TranslateOpts {
+    pub input: PathBuf,
+    pub output: Option<PathBuf>,
+    pub from: Option<String>,
+    pub to: Option<String>,
+    pub glossary_path: Option<PathBuf>,
+    pub no_cache: bool,
+    pub dry_run: bool,
+    pub format: Option<String>,
+    pub json_output: bool,
+}
 
 #[derive(Serialize)]
 struct TranslationResult {
@@ -27,17 +40,7 @@ struct FileResult {
     output_path: Option<String>,
 }
 
-pub async fn run(
-    input: PathBuf,
-    output: Option<PathBuf>,
-    from: Option<String>,
-    to: Option<String>,
-    glossary_path: Option<PathBuf>,
-    no_cache: bool,
-    dry_run: bool,
-    format: Option<String>,
-    json_output: bool,
-) -> Result<()> {
+pub async fn run(opts: TranslateOpts) -> Result<()> {
     let start_time = Instant::now();
     let mut result = TranslationResult {
         success: true,
@@ -49,23 +52,10 @@ pub async fn run(
         files: Vec::new(),
     };
 
-    match run_inner(
-        input,
-        output,
-        from,
-        to,
-        glossary_path,
-        no_cache,
-        dry_run,
-        format,
-        json_output,
-        &mut result,
-    )
-    .await
-    {
+    match run_inner(&opts, &mut result).await {
         Ok(()) => {
             result.elapsed_seconds = start_time.elapsed().as_secs_f64();
-            if json_output {
+            if opts.json_output {
                 println!("{}", serde_json::to_string_pretty(&result)?);
             }
             Ok(())
@@ -74,7 +64,7 @@ pub async fn run(
             result.success = false;
             result.error = Some(e.to_string());
             result.elapsed_seconds = start_time.elapsed().as_secs_f64();
-            if json_output {
+            if opts.json_output {
                 println!("{}", serde_json::to_string_pretty(&result)?);
                 Ok(())
             } else {
@@ -84,32 +74,21 @@ pub async fn run(
     }
 }
 
-async fn run_inner(
-    input: PathBuf,
-    output: Option<PathBuf>,
-    from: Option<String>,
-    to: Option<String>,
-    glossary_path: Option<PathBuf>,
-    no_cache: bool,
-    dry_run: bool,
-    format: Option<String>,
-    json_output: bool,
-    result: &mut TranslationResult,
-) -> Result<()> {
+async fn run_inner(opts: &TranslateOpts, result: &mut TranslationResult) -> Result<()> {
     // Load config
     let mut config = Config::load()?;
 
     // Override languages if specified
-    if let Some(lang) = from {
-        config.project.source_lang = lang;
+    if let Some(ref lang) = opts.from {
+        config.project.source_lang = lang.clone();
     }
-    if let Some(lang) = to {
-        config.project.target_lang = lang;
+    if let Some(ref lang) = opts.to {
+        config.project.target_lang = lang.clone();
     }
 
     // Setup output directory
-    let output_dir = output.unwrap_or_else(|| PathBuf::from("output"));
-    if !dry_run {
+    let output_dir = opts.output.clone().unwrap_or_else(|| PathBuf::from("output"));
+    if !opts.dry_run {
         std::fs::create_dir_all(&output_dir).context("Failed to create output directory")?;
     }
 
@@ -117,23 +96,22 @@ async fn run_inner(
     let registry = ParserRegistry::new();
 
     // Initialize engine (skip if dry run)
-    let engine = if dry_run {
+    let engine = if opts.dry_run {
         None
     } else {
         let mut eng = TranslationEngine::new(config.clone())?;
 
         // Setup cache
-        if !no_cache {
-            if let Ok(cache) = TranslationCache::open_default() {
+        if !opts.no_cache
+            && let Ok(cache) = TranslationCache::open_default() {
                 eng = eng.with_cache(cache);
-                if !json_output {
+                if !opts.json_output {
                     tracing::info!("Translation cache enabled");
                 }
             }
-        }
 
         // Load glossary
-        let glossary_path = glossary_path.or(config.project.glossary_path.clone());
+        let glossary_path = opts.glossary_path.clone().or(config.project.glossary_path.clone());
         if let Some(ref path) = glossary_path
             && path.exists()
         {
@@ -145,18 +123,18 @@ async fn run_inner(
     };
 
     // Collect files to translate
-    let files = collect_files(&input, &registry, format.as_deref())?;
+    let files = collect_files(&opts.input, &registry, opts.format.as_deref())?;
 
     if files.is_empty() {
-        if !json_output {
-            println!("No supported files found in {}", input.display());
+        if !opts.json_output {
+            println!("No supported files found in {}", opts.input.display());
             println!("Supported formats: {:?}", registry.supported_extensions());
         }
         return Ok(());
     }
 
-    if !json_output {
-        if dry_run {
+    if !opts.json_output {
+        if opts.dry_run {
             println!("🔍 DRY RUN - No API calls will be made\n");
         }
         println!("Found {} file(s) to translate", files.len());
@@ -168,13 +146,13 @@ async fn run_inner(
 
     // Process each file
     for file_path in &files {
-        if !json_output {
+        if !opts.json_output {
             println!("\nProcessing: {}", file_path.display());
         }
 
         // Read and parse file
         let content = std::fs::read(file_path)?;
-        let parser = get_parser(&registry, file_path, format.as_deref())?;
+        let parser = get_parser(&registry, file_path, opts.format.as_deref())?;
         let mut blocks = parser.parse(&content)?;
 
         let needs_translation = blocks.iter().filter(|b| b.needs_translation()).count();
@@ -185,7 +163,7 @@ async fn run_inner(
             output_path: None,
         };
 
-        if !json_output {
+        if !opts.json_output {
             println!(
                 "  {} blocks ({} need translation)",
                 blocks.len(),
@@ -194,16 +172,16 @@ async fn run_inner(
         }
 
         if needs_translation == 0 {
-            if !json_output {
+            if !opts.json_output {
                 println!("  Skipping (all translated)");
             }
             result.files.push(file_result);
             continue;
         }
 
-        if dry_run {
+        if opts.dry_run {
             // In dry run mode, just show what would be translated
-            if !json_output {
+            if !opts.json_output {
                 println!("  Would translate {} blocks:", needs_translation);
                 for (i, block) in blocks
                     .iter()
@@ -229,7 +207,7 @@ async fn run_inner(
         }
 
         // Setup progress bar
-        let pb = if json_output {
+        let pb = if opts.json_output {
             ProgressBar::hidden()
         } else {
             let pb = ProgressBar::new(needs_translation as u64);
@@ -261,7 +239,7 @@ async fn run_inner(
         pb.finish_and_clear();
 
         // Get parser and serialize
-        let parser = get_parser(&registry, file_path, format.as_deref())?;
+        let parser = get_parser(&registry, file_path, opts.format.as_deref())?;
         let output_content = parser.serialize(&blocks, &content)?;
 
         // Write output
@@ -275,13 +253,13 @@ async fn run_inner(
         result.files_processed += 1;
         result.files.push(file_result);
 
-        if !json_output {
+        if !opts.json_output {
             println!("  ✓ Output: {}", output_path.display());
         }
     }
 
-    if !json_output {
-        if dry_run {
+    if !opts.json_output {
+        if opts.dry_run {
             println!("\n🔍 Dry run complete - no changes made");
         } else {
             println!("\n✓ Translation complete!");
@@ -293,7 +271,7 @@ async fn run_inner(
 
 fn get_parser<'a>(
     registry: &'a ParserRegistry,
-    file_path: &PathBuf,
+    file_path: &Path,
     format: Option<&str>,
 ) -> Result<&'a dyn kyogoku_parser::Parser> {
     if let Some(fmt) = format {
@@ -308,7 +286,7 @@ fn get_parser<'a>(
 }
 
 fn collect_files(
-    input: &PathBuf,
+    input: &Path,
     registry: &ParserRegistry,
     format: Option<&str>,
 ) -> Result<Vec<PathBuf>> {
@@ -317,7 +295,7 @@ fn collect_files(
     if input.is_file() {
         // If format is specified, use that; otherwise check by extension
         if format.is_some() || registry.get_parser(input).is_some() {
-            files.push(input.clone());
+            files.push(input.to_path_buf());
         }
     } else if input.is_dir() {
         for entry in walkdir(input)? {
@@ -330,7 +308,7 @@ fn collect_files(
     Ok(files)
 }
 
-fn walkdir(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+fn walkdir(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     for entry in std::fs::read_dir(dir)? {

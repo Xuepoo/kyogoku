@@ -44,14 +44,6 @@ impl AssTimestamp {
         let (_, timestamp) = parse_timestamp(s).ok()?;
         Some(timestamp)
     }
-
-    /// Convert to string in ASS format
-    fn to_string(&self) -> String {
-        format!(
-            "{}:{:02}:{:02}.{:02}",
-            self.hours, self.minutes, self.seconds, self.centiseconds
-        )
-    }
 }
 
 impl std::fmt::Display for AssTimestamp {
@@ -84,7 +76,7 @@ struct DialogueLine {
 // ============================================================================
 
 /// Parse unsigned integer
-fn parse_uint<'a>(input: &'a str) -> IResult<&'a str, u32> {
+fn parse_uint(input: &str) -> IResult<&str, u32> {
     map(digit1, |s: &str| s.parse::<u32>().unwrap_or(0))(input)
 }
 
@@ -110,7 +102,7 @@ fn parse_timestamp(input: &str) -> IResult<&str, AssTimestamp> {
 }
 
 /// Parse a field value (trimmed)
-fn parse_field<'a>(input: &'a str) -> IResult<&'a str, String> {
+fn parse_field(input: &str) -> IResult<&str, String> {
     let (input, value) = take_while(|c| c != ',')(input)?;
     Ok((input, value.trim().to_string()))
 }
@@ -306,8 +298,8 @@ impl Parser for AssParser {
             }
 
             // Only process dialogue lines in Events section
-            if in_events && trimmed.starts_with("Dialogue:") {
-                if let Ok((_, dialogue)) = parse_dialogue_line(trimmed) {
+            if in_events && trimmed.starts_with("Dialogue:")
+                && let Ok((_, dialogue)) = parse_dialogue_line(trimmed) {
                     let plain_text = strip_ass_tags(&dialogue.text);
 
                     // Skip empty dialogues
@@ -344,7 +336,6 @@ impl Parser for AssParser {
                     blocks.push(block);
                     dialogue_index += 1;
                 }
-            }
         }
 
         tracing::debug!("Parsed {} dialogue blocks from ASS", blocks.len());

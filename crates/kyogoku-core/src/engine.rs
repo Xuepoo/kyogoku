@@ -160,8 +160,8 @@ impl TranslationEngine {
 
             // Try cache if needed
             let mut cached = false;
-            if needs_translation {
-                if let Some(ref cache) = self.cache
+            if needs_translation
+                && let Some(ref cache) = self.cache
                     && let Some(target) = cache.get(&block.id)
                 {
                     block.target = Some(target);
@@ -169,7 +169,6 @@ impl TranslationEngine {
                     completed += 1;
                     on_progress(completed, total, block);
                 }
-            }
 
             if !needs_translation || cached {
                 // If we have a pending batch, process it first because this block
