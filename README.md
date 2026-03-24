@@ -10,13 +10,15 @@ Kyogoku (京极) derives its name from "驱邪" (exorcism), aiming to banish the
 
 ## ✨ Features
 
-- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT, EPUB, Ren'Py scripts, JSON (MTool format)
+- **Multi-format Support**: TXT, SRT, ASS/SSA, WebVTT, EPUB, Ren'Py scripts, JSON (MTool format), Markdown
+- **Plugin System**: Extensible parser architecture with WASM runtime support
 - **Intelligent Caching**: Blake3 content hashing with sled KV store for incremental translation
 - **Context Window**: Maintains translation consistency with sliding window of previous translations
 - **Glossary System**: Custom terminology enforcement for character names, locations, etc.
 - **Multiple Providers**: OpenAI, DeepSeek, Anthropic, Google, local LLMs (Ollama)
+- **Batch Processing**: Parallel translation with configurable concurrency and retry logic
 - **RAG Memory** (Beta): Semantic search using local ONNX embeddings for context-aware translation
-- **GUI Application**: Tauri 2.0-based desktop app with real-time translation preview
+- **GUI Application**: Tauri 2.0-based desktop app with real-time translation preview and virtual scrolling
 - **XDG Compliant**: Clean configuration following freedesktop.org standards
 
 ## 🚀 Quick Start
@@ -113,6 +115,7 @@ Commands:
   config     Manage configuration (show/set/test)
   translate  Translate files or directories
   cache      Cache management (stats/clear)
+  plugin     Plugin management (list/info/dirs)
 
 Options:
   -v, --verbose  Enable verbose logging
@@ -120,15 +123,39 @@ Options:
   -V, --version  Print version
 ```
 
+### Plugin System
+
+Kyogoku supports custom file format parsers via plugins:
+
+```bash
+# List installed plugins
+kyogoku plugin list
+
+# Show plugin information
+kyogoku plugin info csv-parser
+
+# Show plugin directories
+kyogoku plugin dirs
+```
+
+Plugins are discovered from:
+- `~/.config/kyogoku/plugins/` (user plugins)
+- `./kyogoku-plugins/` (project plugins)
+
+See [examples/csv-plugin/](examples/csv-plugin/) for a complete plugin example.
+
 ## 📁 Project Structure
 
 ```
 kyogoku/
 ├── crates/
 │   ├── kyogoku-cli/      # Command-line interface
-│   ├── kyogoku-core/     # Config, API, cache, engine, RAG
+│   ├── kyogoku-core/     # Config, API, cache, engine, RAG, plugins
 │   ├── kyogoku-parser/   # Format parsers (TXT, SRT, JSON, EPUB, etc.)
+│   ├── kyogoku-i18n/     # Internationalization (Fluent)
 │   └── kyogoku-gui/      # Tauri 2.0 desktop application
+├── examples/
+│   └── csv-plugin/       # Example WASM plugin for CSV format
 ├── docs/                 # Documentation
 ├── models/               # ONNX models for RAG (optional)
 └── Cargo.toml           # Workspace manifest
