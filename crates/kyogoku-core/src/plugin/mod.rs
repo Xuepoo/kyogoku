@@ -9,10 +9,12 @@
 mod loader;
 mod manifest;
 mod registry;
+mod wasm;
 
 pub use loader::PluginLoader;
 pub use manifest::{PluginManifest, PluginType};
 pub use registry::PluginRegistry;
+pub use wasm::WasmPluginRunner;
 
 use anyhow::Result;
 use kyogoku_parser::TranslationBlock;
