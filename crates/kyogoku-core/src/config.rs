@@ -122,6 +122,8 @@ impl Default for TranslationConfig {
 pub struct AdvancedConfig {
     #[serde(default = "default_max_concurrency")]
     pub max_concurrency: usize,
+    #[serde(default = "default_batch_size")]
+    pub batch_size: usize,
     #[serde(default)]
     pub allocator: Option<String>,
 }
@@ -130,10 +132,15 @@ fn default_max_concurrency() -> usize {
     8
 }
 
+fn default_batch_size() -> usize {
+    5
+}
+
 impl Default for AdvancedConfig {
     fn default() -> Self {
         Self {
             max_concurrency: default_max_concurrency(),
+            batch_size: default_batch_size(),
             allocator: None,
         }
     }
