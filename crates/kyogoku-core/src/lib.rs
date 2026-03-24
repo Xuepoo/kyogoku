@@ -3,6 +3,8 @@ pub mod cache;
 pub mod config;
 pub mod engine;
 pub mod glossary;
+
+#[cfg(feature = "rag")]
 pub mod rag;
 
 pub use api::{ApiClient, ChatMessage};

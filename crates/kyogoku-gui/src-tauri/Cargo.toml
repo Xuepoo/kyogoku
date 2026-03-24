@@ -1,6 +1,6 @@
 [package]
 name = "kyogoku-gui"
-version = "0.3.3"
+version = "0.3.4"
 description = "Kyogoku GUI"
 authors = ["xuepoo"]
 edition = "2024"
@@ -24,3 +24,6 @@ kyogoku-parser = { path = "../../kyogoku-parser" }
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-dialog = "2.6.0"
 
+[features]
+default = []
+rag = ["kyogoku-core/rag"]

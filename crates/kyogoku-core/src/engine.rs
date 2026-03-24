@@ -1,6 +1,9 @@
 use anyhow::Result;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::Semaphore;
+
+#[cfg(feature = "rag")]
+use std::sync::Mutex;
 
 use kyogoku_parser::TranslationBlock;
 
@@ -8,7 +11,10 @@ use crate::api::{ApiClient, ChatMessage};
 use crate::cache::TranslationCache;
 use crate::config::{Config, TranslationStyle};
 use crate::glossary::Glossary;
+
+#[cfg(feature = "rag")]
 use crate::rag::embeddings::EmbeddingModel;
+#[cfg(feature = "rag")]
 use crate::rag::vectordb::VectorStore;
 
 /// Translation engine that orchestrates the translation pipeline.
@@ -17,7 +23,9 @@ pub struct TranslationEngine {
     client: ApiClient,
     cache: Option<TranslationCache>,
     glossary: Option<Glossary>,
+    #[cfg(feature = "rag")]
     embedding_model: Option<Arc<EmbeddingModel>>,
+    #[cfg(feature = "rag")]
     vector_store: Option<Arc<Mutex<dyn VectorStore + Send + Sync>>>,
     semaphore: Arc<Semaphore>,
 }
@@ -32,7 +40,9 @@ impl TranslationEngine {
             client,
             cache: None,
             glossary: None,
+            #[cfg(feature = "rag")]
             embedding_model: None,
+            #[cfg(feature = "rag")]
             vector_store: None,
             semaphore,
         })
@@ -48,6 +58,7 @@ impl TranslationEngine {
         self
     }
 
+    #[cfg(feature = "rag")]
     pub fn with_rag(
         mut self,
         embedding_model: Arc<EmbeddingModel>,
@@ -96,6 +107,7 @@ impl TranslationEngine {
         }
 
         // Update vector store (async background)
+        #[cfg(feature = "rag")]
         if let Some(ref model) = self.embedding_model
             && let Some(ref store) = self.vector_store
         {
@@ -413,6 +425,7 @@ impl TranslationEngine {
         }
 
         // Update vector store
+        #[cfg(feature = "rag")]
         if let Some(ref model) = self.embedding_model
             && let Some(ref store) = self.vector_store
         {
@@ -447,6 +460,7 @@ impl TranslationEngine {
         Ok(translation)
     }
 
+    #[cfg(feature = "rag")]
     async fn retrieve_rag_context(&self, source: &str) -> Result<Vec<(String, String)>> {
         let mut context = Vec::new();
 
@@ -477,6 +491,11 @@ impl TranslationEngine {
         }
 
         Ok(context)
+    }
+
+    #[cfg(not(feature = "rag"))]
+    async fn retrieve_rag_context(&self, _source: &str) -> Result<Vec<(String, String)>> {
+        Ok(Vec::new())
     }
 
     fn system_prompt(&self) -> String {
