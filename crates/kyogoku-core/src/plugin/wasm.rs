@@ -31,16 +31,17 @@ mod wasm_runtime {
             let mut store = Store::new(&engine, ());
 
             // Load and compile the module
-            let module = Module::from_file(&engine, &info.path)
-                .map_err(|e| anyhow::anyhow!("Failed to load WASM module {}: {}", info.path.display(), e))?;
+            let module = Module::from_file(&engine, &info.path).map_err(|e| {
+                anyhow::anyhow!("Failed to load WASM module {}: {}", info.path.display(), e)
+            })?;
 
             // Create linker with WASI-like imports (minimal for now)
             let linker = Linker::new(&engine);
 
             // Instantiate the module
-            let instance = linker
-                .instantiate(&mut store, &module)
-                .map_err(|e| anyhow::anyhow!("Failed to instantiate WASM module {}: {}", info.name, e))?;
+            let instance = linker.instantiate(&mut store, &module).map_err(|e| {
+                anyhow::anyhow!("Failed to instantiate WASM module {}: {}", info.name, e)
+            })?;
 
             // Get memory export
             let memory = instance
@@ -58,7 +59,7 @@ mod wasm_runtime {
         }
 
         /// Call the parse function exported by the WASM module.
-        /// 
+        ///
         /// Expected WASM exports:
         /// - `alloc(size: i32) -> i32`: Allocate memory
         /// - `dealloc(ptr: i32, size: i32)`: Free memory
@@ -86,7 +87,8 @@ mod wasm_runtime {
             let input_ptr = alloc.call(&mut self.store, input_len)?;
 
             // Copy input to WASM memory
-            self.memory.write(&mut self.store, input_ptr as usize, content)?;
+            self.memory
+                .write(&mut self.store, input_ptr as usize, content)?;
 
             // Call parse
             let result_ptr = parse.call(&mut self.store, (input_ptr, input_len))?;
@@ -238,7 +240,9 @@ mod wasm_stub {
 
     impl WasmPluginRunner {
         pub fn new(_info: PluginInfo) -> Result<Self> {
-            anyhow::bail!("WASM plugin support is not enabled. Rebuild with --features wasm-plugins")
+            anyhow::bail!(
+                "WASM plugin support is not enabled. Rebuild with --features wasm-plugins"
+            )
         }
 
         pub fn parse(&mut self, _content: &[u8]) -> Result<Vec<TranslationBlock>> {

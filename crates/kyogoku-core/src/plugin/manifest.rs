@@ -15,7 +15,6 @@ pub enum PluginType {
     Wasm,
 }
 
-
 /// Plugin manifest structure (plugin.toml)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {

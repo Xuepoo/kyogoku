@@ -16,13 +16,16 @@ impl TranslationCache {
         match sled::open(path) {
             Ok(db) => {
                 tracing::debug!("Opened translation cache at {}", path.display());
-                Ok(Self { db, path: path.to_path_buf() })
+                Ok(Self {
+                    db,
+                    path: path.to_path_buf(),
+                })
             }
             Err(e) => {
                 // Check if it's a corruption error
                 let err_str = e.to_string();
-                if err_str.contains("corruption") 
-                    || err_str.contains("CRC") 
+                if err_str.contains("corruption")
+                    || err_str.contains("CRC")
                     || err_str.contains("invalid")
                     || err_str.contains("magic")
                 {
@@ -42,18 +45,19 @@ impl TranslationCache {
     fn recover_and_open(path: &Path) -> Result<Self> {
         // Strategy: backup old cache, create new one
         let backup_path = path.with_extension("bak");
-        
+
         if path.exists() {
             // Remove old backup if exists
             if backup_path.exists() {
                 std::fs::remove_dir_all(&backup_path).ok();
             }
-            
+
             // Rename corrupted cache to backup
             if let Err(e) = std::fs::rename(path, &backup_path) {
                 tracing::warn!("Failed to backup corrupted cache: {}. Removing instead.", e);
-                std::fs::remove_dir_all(path)
-                    .with_context(|| format!("Failed to remove corrupted cache at {}", path.display()))?;
+                std::fs::remove_dir_all(path).with_context(|| {
+                    format!("Failed to remove corrupted cache at {}", path.display())
+                })?;
             } else {
                 tracing::info!(
                     "Corrupted cache backed up to {}. Creating fresh cache.",
@@ -65,12 +69,15 @@ impl TranslationCache {
         // Create fresh cache
         std::fs::create_dir_all(path)
             .with_context(|| format!("Failed to create cache directory {}", path.display()))?;
-        
+
         let db = sled::open(path)
             .with_context(|| format!("Failed to create new cache at {}", path.display()))?;
-        
+
         tracing::info!("Created fresh translation cache at {}", path.display());
-        Ok(Self { db, path: path.to_path_buf() })
+        Ok(Self {
+            db,
+            path: path.to_path_buf(),
+        })
     }
 
     pub fn open_default() -> Result<Self> {
@@ -144,7 +151,7 @@ impl TranslationCache {
     pub fn health_check(&self) -> Result<CacheHealth> {
         let entry_count = self.db.len();
         let disk_size = Self::calculate_disk_size(&self.path)?;
-        
+
         // Check for potential corruption by trying to iterate
         let mut corrupted_keys = 0;
         for item in self.db.iter() {

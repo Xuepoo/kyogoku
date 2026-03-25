@@ -87,7 +87,10 @@ async fn run_inner(opts: &TranslateOpts, result: &mut TranslationResult) -> Resu
     }
 
     // Setup output directory
-    let output_dir = opts.output.clone().unwrap_or_else(|| PathBuf::from("output"));
+    let output_dir = opts
+        .output
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("output"));
     if !opts.dry_run {
         std::fs::create_dir_all(&output_dir).context("Failed to create output directory")?;
     }
@@ -103,15 +106,19 @@ async fn run_inner(opts: &TranslateOpts, result: &mut TranslationResult) -> Resu
 
         // Setup cache
         if !opts.no_cache
-            && let Ok(cache) = TranslationCache::open_default() {
-                eng = eng.with_cache(cache);
-                if !opts.json_output {
-                    tracing::info!("Translation cache enabled");
-                }
+            && let Ok(cache) = TranslationCache::open_default()
+        {
+            eng = eng.with_cache(cache);
+            if !opts.json_output {
+                tracing::info!("Translation cache enabled");
             }
+        }
 
         // Load glossary
-        let glossary_path = opts.glossary_path.clone().or(config.project.glossary_path.clone());
+        let glossary_path = opts
+            .glossary_path
+            .clone()
+            .or(config.project.glossary_path.clone());
         if let Some(ref path) = glossary_path
             && path.exists()
         {

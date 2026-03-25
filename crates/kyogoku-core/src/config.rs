@@ -78,8 +78,14 @@ impl ApiConfig {
     /// Validate and sanitize configuration values
     pub fn validate(&self) -> Result<()> {
         // Validate model name (alphanumeric, dash, underscore, dot)
-        if !self.model.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.') {
-            anyhow::bail!("Invalid model name: must contain only alphanumeric characters, dash, underscore, or dot");
+        if !self
+            .model
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+        {
+            anyhow::bail!(
+                "Invalid model name: must contain only alphanumeric characters, dash, underscore, or dot"
+            );
         }
 
         // Validate model name length
@@ -241,10 +247,14 @@ impl ProjectConfig {
     pub fn validate(&self) -> Result<()> {
         // Validate language codes (2-3 letter ISO codes)
         if !is_valid_lang_code(&self.source_lang) {
-            anyhow::bail!("Invalid source_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')");
+            anyhow::bail!(
+                "Invalid source_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')"
+            );
         }
         if !is_valid_lang_code(&self.target_lang) {
-            anyhow::bail!("Invalid target_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')");
+            anyhow::bail!(
+                "Invalid target_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')"
+            );
         }
 
         // Prevent same source and target
@@ -265,8 +275,7 @@ fn is_valid_lang_code(code: &str) -> bool {
     code.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RagConfig {
     #[serde(default)]
     pub enabled: bool,
@@ -277,7 +286,6 @@ pub struct RagConfig {
     #[serde(default)]
     pub vector_store_path: Option<PathBuf>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
@@ -356,11 +364,14 @@ impl Config {
 
     /// Validate all configuration sections
     pub fn validate(&self) -> Result<()> {
-        self.api.validate()
+        self.api
+            .validate()
             .context("API configuration validation failed")?;
-        self.project.validate()
+        self.project
+            .validate()
             .context("Project configuration validation failed")?;
-        self.advanced.validate()
+        self.advanced
+            .validate()
             .context("Advanced configuration validation failed")?;
         Ok(())
     }

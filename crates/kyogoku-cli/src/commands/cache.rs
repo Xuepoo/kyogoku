@@ -1,5 +1,5 @@
 use anyhow::Result;
-use kyogoku_core::{TranslationCache, CacheStatus};
+use kyogoku_core::{CacheStatus, TranslationCache};
 
 pub async fn stats() -> Result<()> {
     let cache = TranslationCache::open_default()?;
@@ -12,7 +12,10 @@ pub async fn stats() -> Result<()> {
     println!("  Path:    {}", cache.path().display());
 
     if health.corrupted_entries > 0 {
-        println!("\n⚠️  Warning: {} corrupted entries detected", health.corrupted_entries);
+        println!(
+            "\n⚠️  Warning: {} corrupted entries detected",
+            health.corrupted_entries
+        );
         println!("   Run 'kyogoku cache clear' to reset the cache");
     }
 

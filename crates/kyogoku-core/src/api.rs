@@ -79,7 +79,7 @@ impl ApiClient {
     #[instrument(skip(self, messages), fields(model = %self.config.model, provider = ?self.config.provider))]
     pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
         debug!(message_count = messages.len(), "Sending chat request");
-        
+
         let request = ChatRequest {
             model: self.config.model.clone(),
             messages,
@@ -211,7 +211,7 @@ fn exponential_backoff_delay(attempt: u32) -> Duration {
 /// Format API errors with actionable suggestions
 fn format_api_error(status: u16, error_text: &str, config: &ApiConfig) -> String {
     let provider = format!("{:?}", config.provider);
-    
+
     match status {
         400 => {
             let mut msg = format!("Bad Request (400): {}", error_text);
@@ -255,7 +255,9 @@ fn format_api_error(status: u16, error_text: &str, config: &ApiConfig) -> String
                  1. Check if model '{}' exists for {}\n   \
                  2. Verify the API base URL is correct: {}\n   \
                  3. The model may have been deprecated or renamed",
-                config.model, provider, config.get_api_base()
+                config.model,
+                provider,
+                config.get_api_base()
             )
         }
         429 => {
@@ -293,8 +295,9 @@ fn format_api_error(status: u16, error_text: &str, config: &ApiConfig) -> String
             let mut msg = format!("API Error ({status}): {error_text}");
             if error_text.contains("quota") || error_text.contains("limit") {
                 msg.push_str(&format!(
-                    "\n\n💡 This may be a usage limit issue. Check your {} account."
-                , provider));
+                    "\n\n💡 This may be a usage limit issue. Check your {} account.",
+                    provider
+                ));
             }
             if error_text.contains("content") && error_text.contains("policy") {
                 msg.push_str("\n\n💡 Content may have been flagged by safety filters. Review the source text.");
