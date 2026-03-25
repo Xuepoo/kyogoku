@@ -4,10 +4,7 @@
 
 #[cfg(feature = "wasm-plugins")]
 mod wasm_runtime {
-    use std::path::Path;
-    use std::sync::Arc;
-
-    use anyhow::{Context, Result};
+    use anyhow::Result;
     use tracing::{debug, info};
     use wasmtime::*;
 
@@ -35,7 +32,7 @@ mod wasm_runtime {
 
             // Load and compile the module
             let module = Module::from_file(&engine, &info.path)
-                .with_context(|| format!("Failed to load WASM module: {}", info.path.display()))?;
+                .map_err(|e| anyhow::anyhow!("Failed to load WASM module {}: {}", info.path.display(), e))?;
 
             // Create linker with WASI-like imports (minimal for now)
             let linker = Linker::new(&engine);
@@ -43,7 +40,7 @@ mod wasm_runtime {
             // Instantiate the module
             let instance = linker
                 .instantiate(&mut store, &module)
-                .with_context(|| format!("Failed to instantiate WASM module: {}", info.name))?;
+                .map_err(|e| anyhow::anyhow!("Failed to instantiate WASM module {}: {}", info.name, e))?;
 
             // Get memory export
             let memory = instance
@@ -72,17 +69,17 @@ mod wasm_runtime {
             let alloc = self
                 .instance
                 .get_typed_func::<i32, i32>(&mut self.store, "alloc")
-                .context("Missing 'alloc' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'alloc' export: {}", e))?;
 
             let parse = self
                 .instance
                 .get_typed_func::<(i32, i32), i32>(&mut self.store, "parse")
-                .context("Missing 'parse' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'parse' export: {}", e))?;
 
             let get_result_len = self
                 .instance
                 .get_typed_func::<(), i32>(&mut self.store, "get_result_len")
-                .context("Missing 'get_result_len' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'get_result_len' export: {}", e))?;
 
             // Allocate memory for input
             let input_len = content.len() as i32;
@@ -104,7 +101,7 @@ mod wasm_runtime {
 
             // Deserialize JSON result
             let blocks: Vec<TranslationBlock> = serde_json::from_slice(&result_buf)
-                .context("Failed to deserialize WASM parse result")?;
+                .map_err(|e| anyhow::anyhow!("Failed to deserialize WASM parse result: {}", e))?;
 
             debug!("WASM parse returned {} blocks", blocks.len());
             Ok(blocks)
@@ -120,17 +117,17 @@ mod wasm_runtime {
             let alloc = self
                 .instance
                 .get_typed_func::<i32, i32>(&mut self.store, "alloc")
-                .context("Missing 'alloc' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'alloc' export: {}", e))?;
 
             let serialize = self
                 .instance
                 .get_typed_func::<(i32, i32, i32, i32), i32>(&mut self.store, "serialize")
-                .context("Missing 'serialize' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'serialize' export: {}", e))?;
 
             let get_result_len = self
                 .instance
                 .get_typed_func::<(), i32>(&mut self.store, "get_result_len")
-                .context("Missing 'get_result_len' export")?;
+                .map_err(|e| anyhow::anyhow!("Missing 'get_result_len' export: {}", e))?;
 
             // Serialize blocks to JSON
             let blocks_json = serde_json::to_vec(blocks)?;
