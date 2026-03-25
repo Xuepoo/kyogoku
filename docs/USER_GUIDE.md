@@ -1,439 +1,429 @@
 # Kyogoku User Guide
 
-This guide covers installation, configuration, and daily usage of Kyogoku for translating novels, game scripts, and subtitles.
+Complete guide for using Kyogoku to translate literature, visual novels, and game scripts.
 
 ## Table of Contents
 
-1. [Installation](#installation)
-2. [Authentication](#authentication)
-3. [Basic Usage](#basic-usage)
-4. [Advanced Usage](#advanced-usage)
-5. [Supported Formats](#supported-formats)
-6. [Troubleshooting](#troubleshooting)
-
----
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Translating Files](#translating-files)
+- [GUI Application](#gui-application)
+- [Glossary System](#glossary-system)
+- [Troubleshooting](#troubleshooting)
 
 ## Installation
 
-### Prerequisites
+### From Release (Recommended)
 
-- Rust 1.85+ (2024 edition)
-- A supported LLM API key (OpenAI, DeepSeek, Anthropic, Google, or local Ollama)
+Download pre-built binaries from [GitHub Releases](https://github.com/xuepoo/kyogoku/releases):
 
-### From Source (Recommended)
+- **Linux**: `kyogoku-linux-x86_64.tar.gz`
+- **macOS**: `kyogoku-macos-universal.dmg`
+- **Windows**: `kyogoku-windows-x64.msi`
+
+### From Source
 
 ```bash
-# Install Rust toolchain
+# Install Rust if not already installed
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup default stable
 
 # Clone and build
 git clone https://github.com/xuepoo/kyogoku
 cd kyogoku
-cargo build --release
+cargo build --release --bin kyogoku
 
-# Install to system PATH
+# Install to PATH (Linux/macOS)
 sudo cp target/release/kyogoku /usr/local/bin/
 
-# Verify installation
-kyogoku --version
+# Or add to PATH manually
+export PATH="$PATH:$(pwd)/target/release"
 ```
 
-### Arch Linux
+## Getting Started
+
+### 1. Initialize Configuration
 
 ```bash
-# Using paru/yay (once published to AUR)
-paru -S kyogoku
+# Create default configuration file
+kyogoku init
+
+# Configuration is created at:
+# Linux/macOS: ~/.config/kyogoku/config.toml
+# Windows: %APPDATA%\kyogoku\config.toml
 ```
 
----
+### 2. Set Up API Access
 
-## Authentication
+Kyogoku supports multiple LLM providers:
 
-Kyogoku supports multiple LLM providers. You need an API key from at least one provider.
-
-### Supported Providers
-
-| Provider | Environment Variable | API Base URL |
-|----------|---------------------|--------------|
-| OpenAI | `OPENAI_API_KEY` | `https://api.openai.com/v1` |
-| DeepSeek | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` |
-| Anthropic | `ANTHROPIC_API_KEY` | `https://api.anthropic.com/v1` |
-| Google | `GOOGLE_API_KEY` | `https://generativelanguage.googleapis.com/v1beta` |
-| Local (Ollama) | N/A | `http://localhost:11434/v1` |
-
-### Method 1: Environment Variables (Recommended)
+#### Option A: OpenAI
 
 ```bash
-# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
-export DEEPSEEK_API_KEY="sk-your-key-here"
-
-# Configure Kyogoku to use environment variable
+export OPENAI_API_KEY="sk-..."
+kyogoku config set api.provider openai
 kyogoku config set api.api_key ENV_VAR
-kyogoku config set api.provider deepseek
+kyogoku config set api.model gpt-4o
 ```
 
-### Method 2: Direct Configuration
+#### Option B: DeepSeek
 
 ```bash
-# Store key directly in config (less secure)
-kyogoku config set api.api_key "sk-your-key-here"
+export DEEPSEEK_API_KEY="sk-..."
+kyogoku config set api.provider deepseek
+kyogoku config set api.api_key ENV_VAR
+kyogoku config set api.model deepseek-chat
 ```
 
-### Method 3: Edit Config File
+#### Option C: Anthropic (Claude)
 
-Edit `~/.config/kyogoku/config.toml`:
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+kyogoku config set api.provider anthropic
+kyogoku config set api.api_key ENV_VAR
+kyogoku config set api.model claude-sonnet-4
+```
+
+#### Option D: Local LLM (Ollama)
+
+```bash
+# Start Ollama server first: ollama serve
+kyogoku config set api.provider local
+kyogoku config set api.model llama3.1:8b
+kyogoku config set api.api_base http://localhost:11434/v1
+```
+
+### 3. Test Configuration
+
+```bash
+# Verify API connectivity and authentication
+kyogoku config test
+```
+
+## Configuration
+
+### View Current Config
+
+```bash
+kyogoku config show
+```
+
+### Modify Settings
+
+```bash
+# API settings
+kyogoku config set api.provider openai
+kyogoku config set api.model gpt-4o-mini
+kyogoku config set api.max_tokens 4096
+kyogoku config set api.temperature 0.3
+
+# Project settings
+kyogoku config set project.source_lang ja
+kyogoku config set project.target_lang en
+kyogoku config set project.output_dir ./translated
+
+# Translation style
+kyogoku config set translation.style literary  # or: casual, formal, technical
+kyogoku config set translation.context_size 5
+
+# Advanced settings
+kyogoku config set advanced.max_concurrency 8  # Parallel requests
+kyogoku config set advanced.batch_size 5       # Blocks per batch
+```
+
+### Config File Format
+
+`~/.config/kyogoku/config.toml`:
 
 ```toml
 [api]
 provider = "deepseek"
-api_key = "ENV_VAR"  # Or paste key directly
+api_key = "ENV_VAR"
 model = "deepseek-chat"
+max_tokens = 4096
+temperature = 0.3
+
+[project]
+source_lang = "ja"
+target_lang = "en"
+output_dir = "./output"
+
+[translation]
+style = "literary"
+context_size = 5
+
+[advanced]
+max_concurrency = 8
+batch_size = 5
 ```
 
-### Verify Connection
+## Translating Files
+
+### Basic Translation
 
 ```bash
-kyogoku config test
+# Single file
+kyogoku translate novel.txt
+
+# Directory (recursive)
+kyogoku translate ./input_folder
+
+# Custom output directory
+kyogoku translate input.json -o ./translated
 ```
 
----
+### Supported Formats
 
-## Basic Usage
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| Plain Text | `.txt` | Line-by-line |
+| SRT Subtitles | `.srt` | Preserves timestamps |
+| ASS/SSA Subtitles | `.ass`, `.ssa` | Preserves styling tags |
+| WebVTT | `.vtt` | HTML5 video subtitles |
+| EPUB | `.epub` | E-book format |
+| Markdown | `.md` | Preserves formatting |
+| JSON | `.json` | MTool game format |
+| Ren'Py | `.rpy` | Visual novel scripts |
 
-### GUI Application (New!)
+### Advanced Options
 
-Kyogoku now includes a graphical interface for easier configuration and translation.
-
-1.  **Launch**: Run `kyogoku-gui` (or open the app from your launcher).
-2.  **Configure**: Set your API Key, Model, and Style in the "Configuration" panel. Click "Save Changes".
-3.  **Translate**: Drag and drop a file (e.g., `.rpy`, `.epub`, `.srt`) into the "New Translation Task" zone.
-4.  **Wait**: The translation progress will be shown.
-5.  **Result**: The translated file will be saved in the same directory as the source, with `_translated` suffix.
-
-### CLI Workflow Overview
-
-1. **Prepare**: Organize source files in a directory
-2. **Configure**: Set up API and translation preferences
-3. **Translate**: Run translation command
-4. **Review**: Check output in the output directory
-
-### Translating a Single File
+#### Preview Before Translating
 
 ```bash
-# Translate to ./output directory
-kyogoku translate ./input/script.json
-
-# Specify output directory
-kyogoku translate ./input/script.json -o ./translated
-
-# Specify languages explicitly
-kyogoku translate ./novel.txt --from ja --to zh
+# Dry run - show blocks without API calls
+kyogoku translate novel.txt --dry-run
 ```
 
-### Translating a Directory
+#### Custom Language Pair
 
 ```bash
-# Translate all supported files in a directory
-kyogoku translate ./game_scripts/ -o ./game_scripts_zh/
-
-# With verbose logging
-kyogoku translate ./input/ -o ./output/ -v
+# Override config languages
+kyogoku translate script.rpy --from ja --to zh
 ```
 
-### Checking Cache
-
-Kyogoku caches translations to avoid redundant API calls:
+#### Skip Cache
 
 ```bash
-# View cache statistics
-kyogoku cache stats
-
-# Clear all cached translations
-kyogoku cache clear
+# Force fresh translation (ignore cache)
+kyogoku translate input.txt --no-cache
 ```
 
----
+#### Use Glossary
 
-## Advanced Usage
+```bash
+# Apply custom terminology
+kyogoku translate game.json --glossary ./character_names.json
+```
 
-### Using a Glossary
+#### JSON Output
 
-Glossaries ensure consistent translation of character names, locations, and terminology.
+```bash
+# Machine-readable results
+kyogoku translate input.txt --json > result.json
+```
 
-**Create `glossary.json`:**
+### Debug Mode
+
+```bash
+# Verbose logging (info level)
+kyogoku -v translate input.txt
+
+# Debug logging (with tracing spans)
+kyogoku -d translate input.txt
+
+# Quiet mode (errors only)
+kyogoku -q translate input.txt
+```
+
+## GUI Application
+
+### Launching the GUI
+
+```bash
+cd crates/kyogoku-gui
+pnpm install
+pnpm tauri dev
+```
+
+### GUI Features
+
+- **Drag & Drop**: Add files by dragging into the app
+- **Batch Processing**: Queue multiple files for translation
+- **Real-time Preview**: Watch translations appear live
+- **Cost Estimation**: Estimate API costs before translating
+- **Virtual Scrolling**: Handle large documents efficiently
+- **Theme System**: Light/dark mode support
+- **Keyboard Shortcuts**:
+  - `Ctrl+O`: Add files
+  - `Ctrl+S`: Save configuration
+  - `Ctrl+Q`: Clear queue
+
+## Glossary System
+
+### Creating a Glossary
+
+Create a JSON file with custom terminology:
 
 ```json
 {
-  "terms": [
+  "entries": [
     {
-      "source": "京极堂",
-      "target": "Kyogokudo",
-      "context": "Character name - the protagonist detective"
+      "source": "桜",
+      "target": "Sakura",
+      "context": "Character name"
     },
     {
-      "source": "魍魎",
-      "target": "Mouryou",
-      "context": "Supernatural creature, keep romanized"
+      "source": "異世界",
+      "target": "isekai",
+      "context": "Keep as romanized term"
     },
     {
-      "source": "古書店",
-      "target": "antiquarian bookshop",
-      "context": "Setting location"
+      "source": "魔法",
+      "target": "magic",
+      "context": ""
     }
   ]
 }
 ```
 
-**Use the glossary:**
+### Using a Glossary
 
 ```bash
-kyogoku translate ./novel.txt --glossary ./glossary.json -o ./output
+# CLI
+kyogoku translate input.txt --glossary ./glossary.json
+
+# Config file
+kyogoku config set project.glossary_path ./glossary.json
 ```
 
-### Translation Styles
+### Glossary Benefits
 
-Configure the translation style for different content types:
-
-| Style | Use Case | Description |
-|-------|----------|-------------|
-| `literary` | Novels, light novels | Prose-focused, maintains literary quality |
-| `casual` | Game dialogue, chat | Natural, conversational tone |
-| `formal` | Business, official docs | Polished, professional language |
-| `technical` | Manuals, documentation | Precise, terminology-focused |
-
-```bash
-kyogoku config set translation.style literary
-```
-
-### Context Window
-
-The context window includes previous translations for consistency:
-
-```bash
-# Set context window size (default: 5)
-kyogoku config set translation.context_size 10
-```
-
-Larger context = better consistency, but higher token usage.
-
-### Concurrency Control
-
-Control the number of parallel API requests:
-
-```bash
-# Set max concurrent requests (default: 8)
-kyogoku config set advanced.max_concurrency 4
-```
-
-Lower values reduce rate-limiting risk; higher values increase speed.
-
-### Skip Cache
-
-Force fresh translations, ignoring cache:
-
-```bash
-kyogoku translate ./input.json --no-cache
-```
-
----
-
-## Supported Formats
-
-### EPUB Novels (.epub)
-
-Automatically extracts text content from XHTML files, ignoring CSS and images.
-
-**Input:**
-`.epub` file with Japanese text.
-
-**Output:**
-`_translated.epub` with translated content injected back into the structure.
-
-### Ren'Py Scripts (.rpy)
-
-Intelligent parsing of dialogue blocks, menus, and Python logic.
-
-**Input:**
-```rpy
-e "こんにちは。"
-menu:
-    "はい":
-        jump yes
-```
-
-**Output:**
-```rpy
-e "你好。"
-menu:
-    "是":
-        jump yes
-```
-
-### Advanced Subtitles (.ass)
-
-Preserves styles, effects, and dialogue events.
-
-**Input:**
-```ass
-Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Hello World!
-```
-
-**Output:**
-```ass
-Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,你好世界！
-```
-
-### Plain Text (.txt)
-
-Simple line-by-line translation:
-
-**Input:**
-```
-彼女は窓の外を見つめていた。
-雨が降り始めた。
-```
-
-**Output:**
-```
-她凝视着窗外。
-雨开始下了。
-```
-
-### SRT Subtitles (.srt)
-
-Preserves timestamps and subtitle structure:
-
-**Input:**
-```srt
-1
-00:00:01,000 --> 00:00:04,000
-おはようございます。
-
-2
-00:00:05,000 --> 00:00:08,000
-今日はいい天気ですね。
-```
-
-**Output:**
-```srt
-1
-00:00:01,000 --> 00:00:04,000
-早上好。
-
-2
-00:00:05,000 --> 00:00:08,000
-今天天气真好啊。
-```
-
-### JSON (MTool Format)
-
-Supports nested objects and MTool-style dialogue:
-
-**Input:**
-```json
-{
-  "0001": "彼女は静かに微笑んだ。",
-  "0002": "「ありがとう」と彼女は言った。"
-}
-```
-
-**Output:**
-```json
-{
-  "0001": "她静静地微笑着。",
-  "0002": ""谢谢你，"她说。"
-}
-```
-
----
+- **Consistent Terminology**: Same source always maps to same target
+- **Character Names**: Preserve romanization choices
+- **Domain Terms**: Technical or setting-specific vocabulary
+- **Context Hints**: Optional notes for the translator
 
 ## Troubleshooting
 
-### Common Errors
+### API Errors
 
-#### "API key not found"
+#### Authentication Failed (401)
 
 ```
-Error: API key not configured
+Error: Authentication Failed: Check your API key in Settings
 ```
 
-**Solution:** Set your API key:
+**Solution**: Verify your API key is correct and not expired.
+
 ```bash
-export DEEPSEEK_API_KEY="your-key"
+# Check current key
+kyogoku config show
+
+# Update key
+export OPENAI_API_KEY="sk-..."
 kyogoku config set api.api_key ENV_VAR
 ```
 
-#### "Rate limit exceeded"
+#### Rate Limited (429)
 
 ```
-Error: 429 Too Many Requests
+Error: Rate Limited: Reduce batch size or wait
 ```
 
-**Solution:** Reduce concurrency:
+**Solution**: Reduce concurrency or wait before retrying.
+
 ```bash
 kyogoku config set advanced.max_concurrency 2
+kyogoku config set advanced.batch_size 3
 ```
 
-#### "Failed to parse file"
+#### Token Limit Exceeded
+
+```
+Error: Token Limit Exceeded: Your text is too long
+```
+
+**Solution**: Split large files into smaller chunks or reduce max_tokens.
+
+```bash
+kyogoku config set api.max_tokens 2048
+```
+
+### Cache Issues
+
+#### Corrupted Cache
+
+```
+⚠️  Warning: 5 corrupted entries detected
+```
+
+**Solution**: Clear and rebuild cache.
+
+```bash
+kyogoku cache clear
+```
+
+#### Check Cache Health
+
+```bash
+kyogoku cache stats
+```
+
+Output:
+```
+Cache Statistics:
+  Status:  Healthy
+  Entries: 1234
+  Size:    45.2 MB
+  Path:    /home/user/.local/share/kyogoku/cache
+```
+
+### Network Errors
+
+#### Connection Timeout
+
+**Solution**: Check internet connection, increase timeout, or use local LLM.
+
+#### Firewall/Proxy
+
+If behind a corporate firewall:
+
+```bash
+export HTTP_PROXY=http://proxy.example.com:8080
+export HTTPS_PROXY=http://proxy.example.com:8080
+```
+
+### Format Issues
+
+#### Unsupported File Format
+
+```
+Error: No supported files found
+```
+
+**Solution**: Check file extension or use `--format` to force parser.
+
+```bash
+kyogoku translate input.txt --format txt
+```
+
+#### Malformed Input
 
 ```
 Error: Failed to parse input file
 ```
 
-**Solution:** Check file format and encoding (UTF-8 required):
-```bash
-file -i ./input.json  # Check encoding
-iconv -f SHIFT_JIS -t UTF-8 input.txt > input_utf8.txt
-```
+**Solution**: Validate file format. For JSON, use a JSON validator. For EPUB, check with `epubcheck`.
 
-### Network Issues
-
-#### Timeout errors
-
-For slow connections or large files:
+### Getting Help
 
 ```bash
-# The engine has built-in retry logic
-# For persistent issues, check your network connection
-curl -I https://api.deepseek.com
+# General help
+kyogoku --help
+
+# Command-specific help
+kyogoku translate --help
+kyogoku config --help
 ```
 
-#### Proxy configuration
-
-If behind a proxy:
-
-```bash
-export HTTPS_PROXY="http://proxy:8080"
-kyogoku translate ./input.json
-```
-
-### Cache Issues
-
-If translations seem stale:
-
-```bash
-# Clear and rebuild cache
-kyogoku cache clear
-kyogoku translate ./input.json
-```
-
-### Debug Mode
-
-Enable verbose logging for troubleshooting:
-
-```bash
-kyogoku translate ./input.json -v
-```
-
----
-
-## Getting Help
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/xuepoo/kyogoku/issues)
-- **Configuration Reference**: See [CONFIG.md](CONFIG.md) for all options
-- **Developer Guide**: See [DEVELOPER.md](DEVELOPER.md) for contributing
-
----
-
-*Last updated: 2026-03-23*
+For bugs and feature requests: https://github.com/xuepoo/kyogoku/issues

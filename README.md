@@ -118,9 +118,44 @@ Commands:
   plugin     Plugin management (list/info/dirs)
 
 Options:
-  -v, --verbose  Enable verbose logging
+  -v, --verbose  Verbose output (show info level logs)
+  -d, --debug    Debug output (show debug level logs with tracing spans)
+  -q, --quiet    Quiet mode (suppress all non-error output)
   -h, --help     Print help
   -V, --version  Print version
+```
+
+### Translation Options
+
+```bash
+# Basic translation
+kyogoku translate <INPUT> -o <OUTPUT>
+
+# Language options
+--from <LANG>       Source language (default: from config)
+--to <LANG>         Target language (default: from config)
+
+# Advanced options
+--glossary <PATH>   Custom glossary file
+--no-cache          Skip cache lookup (force fresh translation)
+--dry-run           Preview blocks without API calls
+--format <EXT>      Force specific format (e.g., txt, json)
+--json              Output results as JSON
+
+# Examples
+kyogoku translate novel.txt --from ja --to en --dry-run
+kyogoku translate ./scripts/ -o ./translated --glossary ./terms.json
+kyogoku translate game.json --no-cache --json > result.json
+```
+
+### Cache Management
+
+```bash
+# Show cache statistics (entries, size, health status)
+kyogoku cache stats
+
+# Clear all cached translations
+kyogoku cache clear
 ```
 
 ### Plugin System
