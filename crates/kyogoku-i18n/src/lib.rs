@@ -1,12 +1,12 @@
 use fluent_bundle::bundle::FluentBundle;
-use fluent_bundle::{FluentResource, FluentArgs};
+use fluent_bundle::{FluentArgs, FluentResource};
 use intl_memoizer::concurrent::IntlLangMemoizer;
+use log::{error, warn};
 use rust_embed::RustEmbed;
 use std::collections::HashMap;
-use std::sync::OnceLock;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use unic_langid::LanguageIdentifier;
-use log::{warn, error};
 
 #[derive(RustEmbed)]
 #[folder = "locales"]
@@ -27,11 +27,11 @@ impl I18n {
     pub fn new() -> Self {
         let mut bundles = HashMap::new();
         let langs = vec!["en-US", "zh-CN", "ja-JP"];
-        
+
         for lang in langs {
             let lang_id: LanguageIdentifier = lang.parse().expect("Failed to parse language ID");
             let mut bundle = FluentBundle::new_concurrent(vec![lang_id]);
-            
+
             let file_path = format!("{}/main.ftl", lang);
             if let Some(file) = Asset::get(&file_path) {
                 if let Ok(source) = std::str::from_utf8(file.data.as_ref()) {
@@ -40,7 +40,7 @@ impl I18n {
                             if let Err(errors) = bundle.add_resource(res) {
                                 warn!("Failed to add FTL resource for {}: {:?}", lang, errors);
                             }
-                        },
+                        }
                         Err((_res, errors)) => {
                             error!("Failed to parse FTL for {}: {:?}", lang, errors);
                         }
@@ -60,7 +60,10 @@ impl I18n {
         if self.bundles.contains_key(lang) {
             self.current_lang = lang.to_string();
         } else {
-            warn!("Language {} not supported, keeping {}", lang, self.current_lang);
+            warn!(
+                "Language {} not supported, keeping {}",
+                lang, self.current_lang
+            );
         }
     }
 
