@@ -1,0 +1,18 @@
+[Script Info]
+Title: Sample Japanese Anime Subtitles
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,10,10,40,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:03.50,Default,,0,0,0,,ようこそ、{\i1}異世界{\i0}へ。
+Dialogue: 0,0:00:04.00,0:00:07.00,Default,,0,0,0,,あなたは{\b1}選ばれし勇者{\b0}です。
+Dialogue: 0,0:00:08.00,0:00:11.50,Default,Narrator,0,0,0,,この世界を闇から救う使命があります。
+Dialogue: 0,0:00:12.00,0:00:15.00,Default,Guide,0,0,0,,私についてきてください。\N全てを説明します。
+Dialogue: 0,0:00:16.50,0:00:19.00,Default,Guide,0,0,0,,まずは村へ向かいましょう。
+Dialogue: 0,0:00:20.00,0:00:23.50,Default,,0,0,0,,勇気を持って、前に進むのです！
