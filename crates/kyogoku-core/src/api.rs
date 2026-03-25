@@ -143,7 +143,8 @@ impl ApiClient {
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            bail!("API request failed with status {}: {}", status, error_text);
+            let user_message = format_api_error(status.as_u16(), &error_text, &self.config);
+            bail!("{}", user_message);
         }
 
         response
@@ -191,6 +192,102 @@ fn exponential_backoff_delay(attempt: u32) -> Duration {
     let base_ms = 500u64;
     let delay_ms = base_ms * 2u64.pow(attempt.saturating_sub(1));
     Duration::from_millis(delay_ms.min(30_000))
+}
+
+/// Format API errors with actionable suggestions
+fn format_api_error(status: u16, error_text: &str, config: &ApiConfig) -> String {
+    let provider = format!("{:?}", config.provider);
+    
+    match status {
+        400 => {
+            let mut msg = format!("Bad Request (400): {}", error_text);
+            if error_text.contains("model") || error_text.contains("does not exist") {
+                msg.push_str(&format!(
+                    "\n\n💡 Suggestion: The model '{}' may not exist or is unavailable.\n   Try: kyogoku config set api.model <valid-model-name>",
+                    config.model
+                ));
+            }
+            if error_text.contains("max_tokens") || error_text.contains("context_length") {
+                msg.push_str("\n\n💡 Suggestion: Reduce max_tokens or use a model with larger context window.");
+            }
+            msg
+        }
+        401 => {
+            format!(
+                "Authentication Failed (401): Invalid or missing API key\n\n\
+                 💡 Suggestions:\n   \
+                 1. Check your {} API key is correct\n   \
+                 2. If using ENV_VAR, ensure the environment variable is set:\n      \
+                    export {}_API_KEY=\"your-key\"\n   \
+                 3. Verify key at your provider's dashboard",
+                provider,
+                provider.to_uppercase().replace(" ", "_")
+            )
+        }
+        403 => {
+            format!(
+                "Access Forbidden (403): Your API key doesn't have permission for this action\n\n\
+                 💡 Suggestions:\n   \
+                 1. Check if the model '{}' requires special access\n   \
+                 2. Verify your account has the necessary permissions\n   \
+                 3. Some models require a paid subscription",
+                config.model
+            )
+        }
+        404 => {
+            format!(
+                "Not Found (404): The API endpoint or model doesn't exist\n\n\
+                 💡 Suggestions:\n   \
+                 1. Check if model '{}' exists for {}\n   \
+                 2. Verify the API base URL is correct: {}\n   \
+                 3. The model may have been deprecated or renamed",
+                config.model, provider, config.get_api_base()
+            )
+        }
+        429 => {
+            format!(
+                "Rate Limited (429): Too many requests\n\n\
+                 💡 Suggestions:\n   \
+                 1. Wait a few minutes before retrying\n   \
+                 2. Reduce batch_size in config (current: lower values = fewer parallel requests)\n   \
+                 3. Check your {} usage quotas and billing\n   \
+                 4. Consider using a different API key or upgrading your plan",
+                provider
+            )
+        }
+        500 => {
+            format!(
+                "Server Error (500): {} API is experiencing issues\n\n\
+                 💡 Suggestions:\n   \
+                 1. Wait and retry (automatic retry is enabled)\n   \
+                 2. Check {} status page for outages\n   \
+                 3. Try a different model if available",
+                provider, provider
+            )
+        }
+        502 | 503 | 504 => {
+            format!(
+                "Service Unavailable ({status}): {} API is temporarily overloaded\n\n\
+                 💡 Suggestions:\n   \
+                 1. Automatic retry will happen shortly\n   \
+                 2. If persistent, try again in a few minutes\n   \
+                 3. Check {} status page for incidents",
+                provider, provider
+            )
+        }
+        _ => {
+            let mut msg = format!("API Error ({status}): {error_text}");
+            if error_text.contains("quota") || error_text.contains("limit") {
+                msg.push_str(&format!(
+                    "\n\n💡 This may be a usage limit issue. Check your {} account."
+                , provider));
+            }
+            if error_text.contains("content") && error_text.contains("policy") {
+                msg.push_str("\n\n💡 Content may have been flagged by safety filters. Review the source text.");
+            }
+            msg
+        }
+    }
 }
 
 #[cfg(test)]
@@ -282,8 +379,8 @@ mod tests {
             .unwrap_err();
 
         let msg = err.to_string();
-        assert!(msg.contains("API request failed with status"));
-        assert!(msg.contains("unauthorized"));
+        // Error message now includes actionable suggestions
+        assert!(msg.contains("Authentication Failed") || msg.contains("401"));
     }
 
     #[tokio::test]
