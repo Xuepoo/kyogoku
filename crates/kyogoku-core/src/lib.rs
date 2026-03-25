@@ -9,7 +9,7 @@ pub mod plugin;
 pub mod rag;
 
 pub use api::{ApiClient, ChatMessage};
-pub use cache::TranslationCache;
+pub use cache::{CacheHealth, CacheStatus, TranslationCache};
 pub use config::{ApiConfig, ApiProvider, Config, ProjectConfig};
 pub use engine::TranslationEngine;
 pub use glossary::{Glossary, GlossaryEntry};
