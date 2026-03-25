@@ -115,33 +115,27 @@ async fn translate_file(
 
     // Initialize RAG
     #[cfg(feature = "rag")]
-    if config.rag.enabled {
-        if let Some(ref model_path) = config.rag.model_path {
-            if let Some(ref tokenizer_path) = config.rag.tokenizer_path {
-                if let Some(ref vector_store_path) = config.rag.vector_store_path {
-                    // Check if paths exist
-                    if model_path.exists() && tokenizer_path.exists() {
-                        // Load model
-                        match EmbeddingModel::new(model_path, tokenizer_path) {
-                            Ok(model) => {
-                                let model = Arc::new(model);
-                                // Load vector store
-                                let mut store = SimpleVectorStore::new(vector_store_path);
-                                if let Err(e) = store.load() {
-                                    eprintln!(
-                                        "Failed to load vector store (starting fresh): {}",
-                                        e
-                                    );
-                                }
-                                let store = Arc::new(Mutex::new(store));
-                                engine = engine.with_rag(model, store);
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to load RAG model: {}", e);
-                            }
-                        }
-                    }
+    if config.rag.enabled
+        && let Some(ref model_path) = config.rag.model_path
+        && let Some(ref tokenizer_path) = config.rag.tokenizer_path
+        && let Some(ref vector_store_path) = config.rag.vector_store_path
+        && model_path.exists()
+        && tokenizer_path.exists()
+    {
+        // Load model
+        match EmbeddingModel::new(model_path, tokenizer_path) {
+            Ok(model) => {
+                let model = Arc::new(model);
+                // Load vector store
+                let mut store = SimpleVectorStore::new(vector_store_path);
+                if let Err(e) = store.load() {
+                    eprintln!("Failed to load vector store (starting fresh): {}", e);
                 }
+                let store = Arc::new(Mutex::new(store));
+                engine = engine.with_rag(model, store);
+            }
+            Err(e) => {
+                eprintln!("Failed to load RAG model: {}", e);
             }
         }
     }
@@ -491,30 +485,25 @@ async fn translate_single_file(
 
     // Initialize RAG
     #[cfg(feature = "rag")]
-    if config.rag.enabled {
-        if let Some(ref model_path) = config.rag.model_path {
-            if let Some(ref tokenizer_path) = config.rag.tokenizer_path {
-                if let Some(ref vector_store_path) = config.rag.vector_store_path {
-                    if model_path.exists() && tokenizer_path.exists() {
-                        match EmbeddingModel::new(model_path, tokenizer_path) {
-                            Ok(model) => {
-                                let model = Arc::new(model);
-                                let mut store = SimpleVectorStore::new(vector_store_path);
-                                if let Err(e) = store.load() {
-                                    eprintln!(
-                                        "Failed to load vector store (starting fresh): {}",
-                                        e
-                                    );
-                                }
-                                let store = Arc::new(Mutex::new(store));
-                                engine = engine.with_rag(model, store);
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to load RAG model: {}", e);
-                            }
-                        }
-                    }
+    if config.rag.enabled
+        && let Some(ref model_path) = config.rag.model_path
+        && let Some(ref tokenizer_path) = config.rag.tokenizer_path
+        && let Some(ref vector_store_path) = config.rag.vector_store_path
+        && model_path.exists()
+        && tokenizer_path.exists()
+    {
+        match EmbeddingModel::new(model_path, tokenizer_path) {
+            Ok(model) => {
+                let model = Arc::new(model);
+                let mut store = SimpleVectorStore::new(vector_store_path);
+                if let Err(e) = store.load() {
+                    eprintln!("Failed to load vector store (starting fresh): {}", e);
                 }
+                let store = Arc::new(Mutex::new(store));
+                engine = engine.with_rag(model, store);
+            }
+            Err(e) => {
+                eprintln!("Failed to load RAG model: {}", e);
             }
         }
     }

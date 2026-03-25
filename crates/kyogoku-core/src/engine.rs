@@ -124,12 +124,12 @@ impl TranslationEngine {
             tokio::spawn(async move {
                 let embedding = tokio::task::spawn_blocking(move || model.embed(&[source])).await;
 
-                if let Ok(Ok(embeddings)) = embedding {
-                    if let Some(vec) = embeddings.first() {
-                        let mut store = store.lock().unwrap();
-                        if let Err(e) = store.add(id, vec.clone(), source_for_store) {
-                            tracing::warn!("Failed to add to vector store: {}", e);
-                        }
+                if let Ok(Ok(embeddings)) = embedding
+                    && let Some(vec) = embeddings.first()
+                {
+                    let mut store = store.lock().unwrap();
+                    if let Err(e) = store.add(id, vec.clone(), source_for_store) {
+                        tracing::warn!("Failed to add to vector store: {}", e);
                     }
                 }
             });
@@ -446,16 +446,16 @@ impl TranslationEngine {
                 let embedding =
                     tokio::task::spawn_blocking(move || model.embed(&[source_for_embed])).await;
 
-                if let Ok(Ok(embeddings)) = embedding {
-                    if let Some(vec) = embeddings.first() {
-                        let mut store = store.lock().unwrap();
-                        if let Err(e) = store.add(id, vec.clone(), source) {
-                            tracing::warn!("Failed to add vector to store: {}", e);
-                        } else {
-                            // Auto-save occasionally? For now, maybe just keep in memory until explicit save?
-                            // Or save on every add (slow).
-                            // Ideally, save periodically.
-                        }
+                if let Ok(Ok(embeddings)) = embedding
+                    && let Some(vec) = embeddings.first()
+                {
+                    let mut store = store.lock().unwrap();
+                    if let Err(e) = store.add(id, vec.clone(), source) {
+                        tracing::warn!("Failed to add vector to store: {}", e);
+                    } else {
+                        // Auto-save occasionally? For now, maybe just keep in memory until explicit save?
+                        // Or save on every add (slow).
+                        // Ideally, save periodically.
                     }
                 }
             });

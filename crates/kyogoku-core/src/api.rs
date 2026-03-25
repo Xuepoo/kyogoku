@@ -281,7 +281,7 @@ fn format_api_error(status: u16, error_text: &str, config: &ApiConfig) -> String
                 provider, provider
             )
         }
-        502 | 503 | 504 => {
+        502..=504 => {
             format!(
                 "Service Unavailable ({status}): {} API is temporarily overloaded\n\n\
                  💡 Suggestions:\n   \

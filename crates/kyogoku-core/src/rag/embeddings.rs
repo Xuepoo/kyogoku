@@ -102,16 +102,16 @@ impl EmbeddingModel {
             }
 
             if count > 0.0 {
-                for k in 0..hidden_size {
-                    sum_vec[k] /= count;
+                for val in sum_vec.iter_mut() {
+                    *val /= count;
                 }
             }
 
             // Normalize
             let norm = sum_vec.iter().map(|x| x * x).sum::<f32>().sqrt();
             if norm > 0.0 {
-                for k in 0..hidden_size {
-                    sum_vec[k] /= norm;
+                for val in sum_vec.iter_mut() {
+                    *val /= norm;
                 }
             }
 

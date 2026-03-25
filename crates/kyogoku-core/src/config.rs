@@ -115,15 +115,15 @@ impl ApiConfig {
         }
 
         // Validate API key if set (not ENV_VAR)
-        if let Some(ref key) = self.api_key {
-            if key != "ENV_VAR" {
-                if key.is_empty() || key.len() > 500 {
-                    anyhow::bail!("Invalid API key: must be between 1 and 500 characters");
-                }
-                // Check for suspicious patterns (shell injection attempts)
-                if key.contains(|c: char| c == '\0' || c == '\n' || c == '\r') {
-                    anyhow::bail!("Invalid API key: contains invalid characters");
-                }
+        if let Some(ref key) = self.api_key
+            && key != "ENV_VAR"
+        {
+            if key.len() > 500 {
+                anyhow::bail!("Invalid API key: must be between 1 and 500 characters");
+            }
+            // Check for suspicious patterns (shell injection attempts)
+            if key.contains(['\0', '\n', '\r']) {
+                anyhow::bail!("Invalid API key: contains invalid characters");
             }
         }
 
