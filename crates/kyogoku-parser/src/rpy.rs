@@ -1,12 +1,8 @@
-#[cfg(feature = "rpy")]
-use nom::{
-    character::complete::char,
-    branch::alt,
-    IResult,
-};
 use crate::block::TranslationBlock;
 use crate::parser::Parser;
 use anyhow::Result;
+#[cfg(feature = "rpy")]
+use nom::{IResult, branch::alt, character::complete::char};
 use serde_json::json;
 
 /// Ren'Py script parser (.rpy)
@@ -36,8 +32,8 @@ enum RpyElement {
 
 #[derive(Debug, Clone)]
 enum MultilineQuote {
-    DoubleTriple,  // """
-    SingleTriple,  // '''
+    DoubleTriple, // """
+    SingleTriple, // '''
 }
 
 impl std::fmt::Display for MultilineQuote {
@@ -107,36 +103,37 @@ mod parsers {
 
         // Try narration first (pure quoted string)
         if (trimmed.starts_with('"') || trimmed.starts_with('\''))
-            && let Ok((rest, (text, quote))) = quoted_string(trimmed) {
-                let rest = rest.trim();
-                // Check that it's not followed by : (which would be menu)
-                if !rest.starts_with(':') && !rest.contains('=') {
-                    return Ok(("", (None, text, quote)));
-                }
+            && let Ok((rest, (text, quote))) = quoted_string(trimmed)
+        {
+            let rest = rest.trim();
+            // Check that it's not followed by : (which would be menu)
+            if !rest.starts_with(':') && !rest.contains('=') {
+                return Ok(("", (None, text, quote)));
             }
+        }
 
         // Try character dialogue: speaker "text"
         if let Some(first_quote_pos) = trimmed.find('"').or_else(|| trimmed.find('\'')) {
             let before_quote = &trimmed[..first_quote_pos];
             // Check no = before quote (would be assignment)
-            if !before_quote.contains('=') && !before_quote.contains("\"\"\"") && !before_quote.contains("'''")
-                && let Some(last_space) = before_quote.rfind(' ') {
-                    let speaker = before_quote[..last_space].trim();
-                    let quote_part = before_quote[last_space..].trim();
-                    if !speaker.is_empty() && quote_part.is_empty() {
-                        // Valid speaker pattern
-                        let quote_rest = &trimmed[first_quote_pos..];
-                        if let Ok((rest, (text, quote))) = quoted_string(quote_rest) {
-                            let rest = rest.trim();
-                            if !rest.starts_with(':') && !rest.contains('=') {
-                                return Ok((
-                                    "",
-                                    (Some(speaker.to_string()), text, quote),
-                                ));
-                            }
+            if !before_quote.contains('=')
+                && !before_quote.contains("\"\"\"")
+                && !before_quote.contains("'''")
+                && let Some(last_space) = before_quote.rfind(' ')
+            {
+                let speaker = before_quote[..last_space].trim();
+                let quote_part = before_quote[last_space..].trim();
+                if !speaker.is_empty() && quote_part.is_empty() {
+                    // Valid speaker pattern
+                    let quote_rest = &trimmed[first_quote_pos..];
+                    if let Ok((rest, (text, quote))) = quoted_string(quote_rest) {
+                        let rest = rest.trim();
+                        if !rest.starts_with(':') && !rest.contains('=') {
+                            return Ok(("", (Some(speaker.to_string()), text, quote)));
                         }
                     }
                 }
+            }
         }
 
         Err(nom::Err::Error(nom::error::Error::new(
@@ -212,38 +209,34 @@ impl Parser for RpyParser {
             }
 
             // Try parsing as multiline dialogue first
-            if let Some(element) =
-                self.try_parse_multiline_dialogue(line, &lines, idx)
-                && let Some((speaker, text, quote, start, end)) =
-                    match element {
-                        RpyElement::MultilineDialogue(s, t, q, st, ed) => Some((s, t, q, st, ed)),
-                        _ => None,
-                    }
-                {
-                    blocks.push(
-                        TranslationBlock::new(text)
-                            .with_speaker(speaker.unwrap_or_default())
-                            .with_metadata(json!({
-                                "line_start": start,
-                                "line_end": end,
-                                "quote": quote.to_string(),
-                                "type": "multiline_dialogue"
-                            })),
-                    );
-                    idx = end + 1;
-                    continue;
+            if let Some(element) = self.try_parse_multiline_dialogue(line, &lines, idx)
+                && let Some((speaker, text, quote, start, end)) = match element {
+                    RpyElement::MultilineDialogue(s, t, q, st, ed) => Some((s, t, q, st, ed)),
+                    _ => None,
                 }
+            {
+                blocks.push(
+                    TranslationBlock::new(text)
+                        .with_speaker(speaker.unwrap_or_default())
+                        .with_metadata(json!({
+                            "line_start": start,
+                            "line_end": end,
+                            "quote": quote.to_string(),
+                            "type": "multiline_dialogue"
+                        })),
+                );
+                idx = end + 1;
+                continue;
+            }
 
             // Try menu choice
             #[cfg(feature = "rpy")]
             if let Ok((_, (text, quote))) = parsers::parse_menu_choice_line(line) {
-                blocks.push(
-                    TranslationBlock::new(text).with_metadata(json!({
-                        "line": idx,
-                        "quote": quote.to_string(),
-                        "type": "menu"
-                    })),
-                );
+                blocks.push(TranslationBlock::new(text).with_metadata(json!({
+                    "line": idx,
+                    "quote": quote.to_string(),
+                    "type": "menu"
+                })));
                 idx += 1;
                 continue;
             }
@@ -289,7 +282,8 @@ impl Parser for RpyParser {
                         .get("line_start")
                         .and_then(|v| v.as_u64())
                         .or_else(|| block.metadata.get("line").and_then(|v| v.as_u64()))
-                        .ok_or_else(|| anyhow::anyhow!("Missing line_start in multiline block"))? as usize;
+                        .ok_or_else(|| anyhow::anyhow!("Missing line_start in multiline block"))?
+                        as usize;
 
                     let end_line = block
                         .metadata
@@ -317,11 +311,12 @@ impl Parser for RpyParser {
                                 end_line_text.find(quote_str).unwrap_or(0)
                             };
 
-                            let suffix = if start_line != end_line || end_quote_pos > start_quote_pos {
-                                &end_line_text[end_quote_pos..]
-                            } else {
-                                ""
-                            };
+                            let suffix =
+                                if start_line != end_line || end_quote_pos > start_quote_pos {
+                                    &end_line_text[end_quote_pos..]
+                                } else {
+                                    ""
+                                };
 
                             lines[start_line] = format!("{}{}{}", prefix, block.output(), suffix);
 
@@ -341,19 +336,20 @@ impl Parser for RpyParser {
                         .get("line")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as usize)
-                        && let Some(line_text) = lines.get_mut(line_num) {
-                            let quote_str = block
-                                .metadata
-                                .get("quote")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("\"");
+                        && let Some(line_text) = lines.get_mut(line_num)
+                    {
+                        let quote_str = block
+                            .metadata
+                            .get("quote")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("\"");
 
-                            if let Some(new_line) =
-                                self.replace_string_in_line(line_text, block.output(), quote_str)
-                            {
-                                *line_text = new_line;
-                            }
+                        if let Some(new_line) =
+                            self.replace_string_in_line(line_text, block.output(), quote_str)
+                        {
+                            *line_text = new_line;
                         }
+                    }
                 }
             }
         }
@@ -378,7 +374,13 @@ impl RpyParser {
         let trimmed = line.trim();
 
         // Check for assignment (e.g., x = """...""")
-        if trimmed.contains('=') && trimmed.find('=').unwrap_or(usize::MAX) < trimmed.find("\"\"\"").or_else(|| trimmed.find("'''")).unwrap_or(usize::MAX) {
+        if trimmed.contains('=')
+            && trimmed.find('=').unwrap_or(usize::MAX)
+                < trimmed
+                    .find("\"\"\"")
+                    .or_else(|| trimmed.find("'''"))
+                    .unwrap_or(usize::MAX)
+        {
             return None;
         }
 
@@ -407,18 +409,22 @@ impl RpyParser {
             // Single-line multiline block
             let content = &after_opening_quote[..close_pos];
             return Some(RpyElement::MultilineDialogue(
-                speaker, content.to_string(), quote_type, start_idx, start_idx,
+                speaker,
+                content.to_string(),
+                quote_type,
+                start_idx,
+                start_idx,
             ));
         }
 
         // Multi-line block: collect lines until closing quote
         let mut content_lines = Vec::new();
-        
+
         // Only add content from the opening line if there's content after the opening quotes
         if !after_opening_quote.is_empty() {
             content_lines.push(after_opening_quote.to_string());
         }
-        
+
         let mut end_idx = start_idx;
 
         for (i, next_line) in all_lines.iter().enumerate().skip(start_idx + 1) {
@@ -471,7 +477,6 @@ impl RpyParser {
         Some(format!("{}{}{}", prefix, new_content, suffix))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -785,7 +790,7 @@ label start:
         // 4. "Exit" (menu)
         // 5. "I'm ready!" (m)
         // 6. Multiline dialogue (e)
-        
+
         assert!(blocks.len() >= 6);
         assert!(blocks.iter().any(|b| b.source.contains("Welcome")));
         assert!(blocks.iter().any(|b| b.source.contains("The story")));

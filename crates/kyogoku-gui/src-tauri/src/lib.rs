@@ -107,10 +107,11 @@ async fn translate_file(
 
     // Load Glossary
     if let Some(ref path) = config.project.glossary_path
-        && path.exists() {
-            let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
-            engine = engine.with_glossary(glossary);
-        }
+        && path.exists()
+    {
+        let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
+        engine = engine.with_glossary(glossary);
+    }
 
     // Initialize RAG
     #[cfg(feature = "rag")]
@@ -482,10 +483,11 @@ async fn translate_single_file(
 
     // Load Glossary
     if let Some(ref path) = config.project.glossary_path
-        && path.exists() {
-            let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
-            engine = engine.with_glossary(glossary);
-        }
+        && path.exists()
+    {
+        let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
+        engine = engine.with_glossary(glossary);
+    }
 
     // Initialize RAG
     #[cfg(feature = "rag")]
@@ -582,7 +584,11 @@ async fn translate_single_file(
 
 #[tauri::command]
 fn get_available_locales() -> Result<Vec<String>, String> {
-    Ok(vec!["en-US".to_string(), "zh-CN".to_string(), "ja-JP".to_string()])
+    Ok(vec![
+        "en-US".to_string(),
+        "zh-CN".to_string(),
+        "ja-JP".to_string(),
+    ])
 }
 
 #[tauri::command]
@@ -606,10 +612,11 @@ fn get_glossary(state: State<AppState>) -> Result<Vec<GlossaryEntry>, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
 
     if let Some(ref path) = config.project.glossary_path
-        && path.exists() {
-            let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
-            return Ok(glossary.entries().into_iter().cloned().collect());
-        }
+        && path.exists()
+    {
+        let glossary = Glossary::load(path).map_err(|e| e.to_string())?;
+        return Ok(glossary.entries().into_iter().cloned().collect());
+    }
     Ok(vec![])
 }
 

@@ -85,10 +85,11 @@ impl PluginLoader {
 
             // Also check for standalone .wasm files
             if path.extension().is_some_and(|ext| ext == "wasm")
-                && let Some(info) = self.create_standalone_plugin_info(&path) {
-                    debug!("Found standalone WASM plugin: {}", info.name);
-                    plugins.push(info);
-                }
+                && let Some(info) = self.create_standalone_plugin_info(&path)
+            {
+                debug!("Found standalone WASM plugin: {}", info.name);
+                plugins.push(info);
+            }
         }
 
         Ok(plugins)

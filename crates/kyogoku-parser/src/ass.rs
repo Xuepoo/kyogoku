@@ -14,11 +14,11 @@
 
 use anyhow::Result;
 use nom::{
+    IResult,
     bytes::complete::{is_not, tag, take_while},
     character::complete::{char, digit1, not_line_ending},
     combinator::map,
     sequence::delimited,
-    IResult,
 };
 use serde_json::json;
 
@@ -113,11 +113,8 @@ fn parse_dialogue_line(input: &str) -> IResult<&str, DialogueLine> {
     let (input, _) = tag("Dialogue:")(input)?;
 
     // Parse the 9 fixed fields before text
-    let (input, layer_str) = delimited(
-        take_while(|c| c == ' ' || c == '\t'),
-        is_not(","),
-        tag(","),
-    )(input)?;
+    let (input, layer_str) =
+        delimited(take_while(|c| c == ' ' || c == '\t'), is_not(","), tag(","))(input)?;
     let layer = layer_str.trim().parse::<u32>().unwrap_or(0);
 
     // Start timestamp
@@ -274,7 +271,6 @@ pub fn reinsert_ass_tags(original: &str, translated: &str) -> String {
     }
 }
 
-
 impl Parser for AssParser {
     fn extensions(&self) -> &[&str] {
         &["ass", "ssa"]
@@ -298,44 +294,46 @@ impl Parser for AssParser {
             }
 
             // Only process dialogue lines in Events section
-            if in_events && trimmed.starts_with("Dialogue:")
-                && let Ok((_, dialogue)) = parse_dialogue_line(trimmed) {
-                    let plain_text = strip_ass_tags(&dialogue.text);
+            if in_events
+                && trimmed.starts_with("Dialogue:")
+                && let Ok((_, dialogue)) = parse_dialogue_line(trimmed)
+            {
+                let plain_text = strip_ass_tags(&dialogue.text);
 
-                    // Skip empty dialogues
-                    if plain_text.trim().is_empty() {
-                        continue;
-                    }
-
-                    let speaker = if dialogue.name.is_empty() {
-                        None
-                    } else {
-                        Some(dialogue.name.clone())
-                    };
-
-                    let mut block = TranslationBlock::new(&plain_text);
-                    if let Some(s) = speaker {
-                        block = block.with_speaker(s);
-                    }
-
-                    block = block.with_metadata(json!({
-                        "format": "ass",
-                        "index": dialogue_index,
-                        "layer": dialogue.layer,
-                        "start": dialogue.start.to_string(),
-                        "end": dialogue.end.to_string(),
-                        "style": dialogue.style,
-                        "name": dialogue.name,
-                        "margin_l": dialogue.margin_l,
-                        "margin_r": dialogue.margin_r,
-                        "margin_v": dialogue.margin_v,
-                        "effect": dialogue.effect,
-                        "original_text": dialogue.text,
-                    }));
-
-                    blocks.push(block);
-                    dialogue_index += 1;
+                // Skip empty dialogues
+                if plain_text.trim().is_empty() {
+                    continue;
                 }
+
+                let speaker = if dialogue.name.is_empty() {
+                    None
+                } else {
+                    Some(dialogue.name.clone())
+                };
+
+                let mut block = TranslationBlock::new(&plain_text);
+                if let Some(s) = speaker {
+                    block = block.with_speaker(s);
+                }
+
+                block = block.with_metadata(json!({
+                    "format": "ass",
+                    "index": dialogue_index,
+                    "layer": dialogue.layer,
+                    "start": dialogue.start.to_string(),
+                    "end": dialogue.end.to_string(),
+                    "style": dialogue.style,
+                    "name": dialogue.name,
+                    "margin_l": dialogue.margin_l,
+                    "margin_r": dialogue.margin_r,
+                    "margin_v": dialogue.margin_v,
+                    "effect": dialogue.effect,
+                    "original_text": dialogue.text,
+                }));
+
+                blocks.push(block);
+                dialogue_index += 1;
+            }
         }
 
         tracing::debug!("Parsed {} dialogue blocks from ASS", blocks.len());
@@ -559,7 +557,8 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
 
     #[test]
     fn test_parse_dialogue_with_speaker() {
-        let line = "Dialogue: 1,0:00:05.00,0:00:08.00,Alt,Alice,10,20,30,ScrollUp,{\\c&HFF0000&}Red{\\c}";
+        let line =
+            "Dialogue: 1,0:00:05.00,0:00:08.00,Alt,Alice,10,20,30,ScrollUp,{\\c&HFF0000&}Red{\\c}";
         let (_, dialogue) = parse_dialogue_line(line).unwrap();
 
         assert_eq!(dialogue.layer, 1);
@@ -611,10 +610,7 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
 
     #[test]
     fn test_strip_ass_tags_color() {
-        assert_eq!(
-            strip_ass_tags("{\\c&HFF0000&}Red text{\\c}"),
-            "Red text"
-        );
+        assert_eq!(strip_ass_tags("{\\c&HFF0000&}Red text{\\c}"), "Red text");
     }
 
     #[test]
@@ -685,7 +681,10 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
         let blocks = parser.parse(SAMPLE_ASS).unwrap();
 
         // Check first block metadata
-        assert_eq!(blocks[0].metadata.get("index").unwrap().as_u64().unwrap(), 0);
+        assert_eq!(
+            blocks[0].metadata.get("index").unwrap().as_u64().unwrap(),
+            0
+        );
         assert_eq!(
             blocks[0].metadata.get("start").unwrap().as_str().unwrap(),
             "0:00:01.00"
@@ -714,19 +713,21 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
 
     #[test]
     fn test_ass_serialize_simple() {
-        let blocks = vec![TranslationBlock::new("Hello")
-            .with_metadata(json!({
-                "layer": 0,
-                "start": "0:00:01.00",
-                "end": "0:00:04.00",
-                "style": "Default",
-                "name": "",
-                "margin_l": 0,
-                "margin_r": 0,
-                "margin_v": 0,
-                "effect": ""
-            }))
-            .with_target("你好")];
+        let blocks = vec![
+            TranslationBlock::new("Hello")
+                .with_metadata(json!({
+                    "layer": 0,
+                    "start": "0:00:01.00",
+                    "end": "0:00:04.00",
+                    "style": "Default",
+                    "name": "",
+                    "margin_l": 0,
+                    "margin_r": 0,
+                    "margin_v": 0,
+                    "effect": ""
+                }))
+                .with_target("你好"),
+        ];
 
         let parser = AssParser;
         let output = parser.serialize(&blocks, b"").unwrap();
@@ -740,20 +741,22 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
 
     #[test]
     fn test_ass_serialize_with_speaker() {
-        let blocks = vec![TranslationBlock::new("Hello")
-            .with_speaker("Alice")
-            .with_metadata(json!({
-                "layer": 0,
-                "start": "0:00:01.00",
-                "end": "0:00:04.00",
-                "style": "Default",
-                "name": "Alice",
-                "margin_l": 0,
-                "margin_r": 0,
-                "margin_v": 0,
-                "effect": ""
-            }))
-            .with_target("你好")];
+        let blocks = vec![
+            TranslationBlock::new("Hello")
+                .with_speaker("Alice")
+                .with_metadata(json!({
+                    "layer": 0,
+                    "start": "0:00:01.00",
+                    "end": "0:00:04.00",
+                    "style": "Default",
+                    "name": "Alice",
+                    "margin_l": 0,
+                    "margin_r": 0,
+                    "margin_v": 0,
+                    "effect": ""
+                }))
+                .with_target("你好"),
+        ];
 
         let parser = AssParser;
         let output = parser.serialize(&blocks, b"").unwrap();
@@ -814,8 +817,8 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
 
     #[test]
     fn test_ass_newline_handling() {
-        let blocks = vec![TranslationBlock::new("Line one\nLine two")
-            .with_metadata(json!({
+        let blocks = vec![
+            TranslationBlock::new("Line one\nLine two").with_metadata(json!({
                 "layer": 0,
                 "start": "0:00:01.00",
                 "end": "0:00:04.00",
@@ -825,7 +828,8 @@ Comment: 0,0:00:16.00,0:00:18.00,Default,,0,0,0,,This should be ignored
                 "margin_r": 0,
                 "margin_v": 0,
                 "effect": ""
-            }))];
+            })),
+        ];
 
         let parser = AssParser;
         let output = parser.serialize(&blocks, b"").unwrap();
@@ -873,4 +877,3 @@ Dialogue: 0,0:00:05.00,0:00:08.00,Default,,0,0,0,,Should parse
         assert_eq!(blocks[0].source, "Should parse");
     }
 }
-

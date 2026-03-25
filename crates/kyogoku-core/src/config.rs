@@ -170,8 +170,7 @@ impl Default for ProjectConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RagConfig {
     #[serde(default)]
     pub enabled: bool,
@@ -182,7 +181,6 @@ pub struct RagConfig {
     #[serde(default)]
     pub vector_store_path: Option<PathBuf>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
