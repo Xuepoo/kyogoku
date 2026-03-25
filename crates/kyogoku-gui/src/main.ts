@@ -127,6 +127,85 @@ const toast = {
     info: (msg: string, opts?: ToastOptions) => showToast(msg, 'info', opts)
 };
 
+// --- Error Formatting ---
+
+interface ErrorSuggestion {
+    pattern: RegExp;
+    title: string;
+    suggestion: string;
+}
+
+const errorSuggestions: ErrorSuggestion[] = [
+    {
+        pattern: /401|unauthorized|auth/i,
+        title: "Authentication Failed",
+        suggestion: "Check your API key in Settings. Make sure it's valid and not expired."
+    },
+    {
+        pattern: /429|rate.?limit|too many requests/i,
+        title: "Rate Limited",
+        suggestion: "Reduce batch size or wait a few minutes before trying again."
+    },
+    {
+        pattern: /timeout|timed out/i,
+        title: "Request Timeout",
+        suggestion: "The API took too long to respond. Try again or reduce batch size."
+    },
+    {
+        pattern: /network|connection|offline|ECONNREFUSED/i,
+        title: "Network Error",
+        suggestion: "Check your internet connection. The API server may also be down."
+    },
+    {
+        pattern: /token.?limit|context.?length|max.?tokens/i,
+        title: "Token Limit Exceeded",
+        suggestion: "Your text is too long. Try splitting into smaller files."
+    },
+    {
+        pattern: /no.?api.?key|api.?key.?not.?set|missing.?key/i,
+        title: "API Key Missing",
+        suggestion: "Go to Settings and enter your API key for the selected provider."
+    },
+    {
+        pattern: /quota|insufficient.?balance|billing/i,
+        title: "Quota Exceeded",
+        suggestion: "Check your API provider's billing page. You may need to add credits."
+    },
+    {
+        pattern: /invalid.?model|model.?not.?found/i,
+        title: "Invalid Model",
+        suggestion: "The selected model doesn't exist. Check model name in Settings."
+    },
+    {
+        pattern: /permission|forbidden|403/i,
+        title: "Permission Denied",
+        suggestion: "Your API key doesn't have access to this resource."
+    },
+    {
+        pattern: /server.?error|500|502|503|504/i,
+        title: "Server Error",
+        suggestion: "The API server is having issues. Wait a few minutes and try again."
+    },
+];
+
+function formatError(error: string | Error | unknown): string {
+    const errorStr = error instanceof Error ? error.message : String(error);
+    
+    for (const { pattern, title, suggestion } of errorSuggestions) {
+        if (pattern.test(errorStr)) {
+            return `${title}: ${suggestion}`;
+        }
+    }
+    
+    // Default: just return the error with a generic prefix
+    return `Error: ${errorStr}`;
+}
+
+function notifyError(error: string | Error | unknown) {
+    const formatted = formatError(error);
+    toast.error(formatted, { duration: 6000, dismissible: true });
+}
+
 // --- Keyboard Shortcuts ---
 
 interface Shortcut {
@@ -341,7 +420,7 @@ async function loadConfig() {
         setStatus("Configuration loaded", "success");
         clearStatus();
     } catch (e) {
-        notify(`Failed to load config: ${e}`, "error");
+        notifyError(e);
         console.error(e);
     }
 }
@@ -392,7 +471,7 @@ async function saveConfig() {
         updateCostEstimation(); // Update cost when config changes
         clearStatus();
     } catch (e) {
-        notify(`Failed to save: ${e}`, "error");
+        notifyError(e);
         console.error(e);
     }
 }
@@ -422,7 +501,7 @@ async function setLocale(locale: string) {
         notify("Language updated", "success");
     } catch (e) {
         console.error("Failed to set locale:", e);
-        notify("Failed to update language", "error");
+        notifyError(e);
     }
 }
 
@@ -820,7 +899,7 @@ async function addFilesToQueue(filePaths: string[]) {
         toast.info(`Added ${filePaths.length} file(s) to queue`);
     } catch (e) {
         console.error("Failed to add files to queue:", e);
-        notify(`Failed to add files: ${e}`, "error");
+        notifyError(e);
     }
 }
 
@@ -866,7 +945,15 @@ function renderFileQueue() {
     if (!fileQueueContainer) return;
     
     if (fileQueue.length === 0) {
-        fileQueueContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No files in queue</p>';
+        fileQueueContainer.innerHTML = `
+            <div class="text-center py-8 px-4">
+                <div class="text-4xl mb-3 opacity-50">📂</div>
+                <p class="text-sm text-gray-400 mb-2">No files in queue</p>
+                <p class="text-xs text-gray-500">
+                    Drag & drop files here or click <span class="text-amber-500">+ Add Files</span> to get started
+                </p>
+            </div>
+        `;
         return;
     }
     
@@ -926,7 +1013,7 @@ async function startBatchTranslation() {
         
         await invoke("start_batch_translation");
     } catch (e) {
-        notify(`Batch translation error: ${e}`, "error");
+        notifyError(e);
         console.error(e);
         
         if (startBatchBtn) {
@@ -971,8 +1058,10 @@ function renderRecentActivity() {
     if (history.length === 0) {
         recentActivity.innerHTML = `
             <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
-            <div class="bg-gray-900/50 rounded p-4 text-center">
-                <p class="text-sm text-gray-500 italic">No recent tasks found.</p>
+            <div class="bg-gray-900/50 rounded p-6 text-center border border-gray-800/50">
+                <div class="text-3xl mb-2 opacity-50">📋</div>
+                <p class="text-sm text-gray-400 mb-1">No recent activity</p>
+                <p class="text-xs text-gray-500">Your translation history will appear here</p>
             </div>
         `;
         return;
@@ -1168,7 +1257,7 @@ window.addEventListener("DOMContentLoaded", async () => {
                 }
             } catch (e) {
                 console.error("Failed to open directory dialog", e);
-                toast.error("Failed to select directory");
+                notifyError(e);
             }
         });
     }
@@ -1231,7 +1320,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     
     await listen('file-failed', async (event) => {
         const [_fileId, error] = event.payload as [string, string];
-        notify(`Translation failed: ${error}`, "error");
+        notifyError(error);
         
         // Update queue display
         fileQueue = await invoke<FileQueueItem[]>("get_file_queue");
@@ -1357,6 +1446,20 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     function renderPreview() {
         if (!previewContainer) return;
+
+        // Show empty state if no items
+        if (previewItems.length === 0) {
+            previewContainer.innerHTML = `
+                <div class="text-center py-12 px-4">
+                    <div class="text-4xl mb-3 opacity-50">📝</div>
+                    <p class="text-sm text-gray-400 mb-2">No translations yet</p>
+                    <p class="text-xs text-gray-500">
+                        Start a translation to see live preview here
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         filteredItems = getFilteredItems();
         const totalItems = filteredItems.length;
