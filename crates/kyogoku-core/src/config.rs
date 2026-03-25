@@ -75,6 +75,55 @@ impl ApiConfig {
         }
     }
 
+    /// Validate and sanitize configuration values
+    pub fn validate(&self) -> Result<()> {
+        // Validate model name (alphanumeric, dash, underscore, dot)
+        if !self.model.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.') {
+            anyhow::bail!("Invalid model name: must contain only alphanumeric characters, dash, underscore, or dot");
+        }
+
+        // Validate model name length
+        if self.model.is_empty() || self.model.len() > 100 {
+            anyhow::bail!("Invalid model name: must be between 1 and 100 characters");
+        }
+
+        // Validate max_tokens range
+        if self.max_tokens == 0 || self.max_tokens > 1_000_000 {
+            anyhow::bail!("Invalid max_tokens: must be between 1 and 1,000,000");
+        }
+
+        // Validate temperature range
+        if !(0.0..=2.0).contains(&self.temperature) {
+            anyhow::bail!("Invalid temperature: must be between 0.0 and 2.0");
+        }
+
+        // Validate API base if custom
+        if let Some(ref base) = self.api_base {
+            if base.is_empty() || base.len() > 500 {
+                anyhow::bail!("Invalid API base URL: must be between 1 and 500 characters");
+            }
+            // Basic URL validation
+            if !base.starts_with("http://") && !base.starts_with("https://") {
+                anyhow::bail!("Invalid API base URL: must start with http:// or https://");
+            }
+        }
+
+        // Validate API key if set (not ENV_VAR)
+        if let Some(ref key) = self.api_key {
+            if key != "ENV_VAR" {
+                if key.is_empty() || key.len() > 500 {
+                    anyhow::bail!("Invalid API key: must be between 1 and 500 characters");
+                }
+                // Check for suspicious patterns (shell injection attempts)
+                if key.contains(|c: char| c == '\0' || c == '\n' || c == '\r') {
+                    anyhow::bail!("Invalid API key: contains invalid characters");
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Load API key from environment variable if set to "ENV_VAR"
     pub fn resolve_api_key(&self) -> Option<String> {
         match &self.api_key {
@@ -146,6 +195,23 @@ impl Default for AdvancedConfig {
     }
 }
 
+impl AdvancedConfig {
+    /// Validate advanced configuration values
+    pub fn validate(&self) -> Result<()> {
+        // Validate max_concurrency
+        if self.max_concurrency == 0 || self.max_concurrency > 100 {
+            anyhow::bail!("Invalid max_concurrency: must be between 1 and 100");
+        }
+
+        // Validate batch_size
+        if self.batch_size == 0 || self.batch_size > 1000 {
+            anyhow::bail!("Invalid batch_size: must be between 1 and 1000");
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectConfig {
     pub source_lang: String,
@@ -168,6 +234,35 @@ impl Default for ProjectConfig {
             output_dir: None,
         }
     }
+}
+
+impl ProjectConfig {
+    /// Validate project configuration
+    pub fn validate(&self) -> Result<()> {
+        // Validate language codes (2-3 letter ISO codes)
+        if !is_valid_lang_code(&self.source_lang) {
+            anyhow::bail!("Invalid source_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')");
+        }
+        if !is_valid_lang_code(&self.target_lang) {
+            anyhow::bail!("Invalid target_lang: must be 2-3 letter language code (e.g., 'ja', 'en', 'zh')");
+        }
+
+        // Prevent same source and target
+        if self.source_lang == self.target_lang {
+            anyhow::bail!("source_lang and target_lang must be different");
+        }
+
+        Ok(())
+    }
+}
+
+fn is_valid_lang_code(code: &str) -> bool {
+    // Allow 2-3 letter codes, optionally with region (e.g., zh-CN, en-US)
+    if code.len() < 2 || code.len() > 8 {
+        return false;
+    }
+    // Basic validation: letters, dash, and numbers only
+    code.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,11 +327,19 @@ impl Config {
         let content = std::fs::read_to_string(&path)
             .with_context(|| format!("Failed to read config from {}", path.display()))?;
 
-        toml::from_str(&content)
-            .with_context(|| format!("Failed to parse config from {}", path.display()))
+        let config: Self = toml::from_str(&content)
+            .with_context(|| format!("Failed to parse config from {}", path.display()))?;
+
+        // Validate configuration after loading
+        config.validate()?;
+
+        Ok(config)
     }
 
     pub fn save(&self) -> Result<()> {
+        // Validate before saving
+        self.validate()?;
+
         let dir = Self::config_dir().context("Could not determine config directory")?;
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("Failed to create config directory {}", dir.display()))?;
@@ -251,12 +354,26 @@ impl Config {
         Ok(())
     }
 
+    /// Validate all configuration sections
+    pub fn validate(&self) -> Result<()> {
+        self.api.validate()
+            .context("API configuration validation failed")?;
+        self.project.validate()
+            .context("Project configuration validation failed")?;
+        self.advanced.validate()
+            .context("Advanced configuration validation failed")?;
+        Ok(())
+    }
+
     pub fn load_from_file(path: &PathBuf) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config from {}", path.display()))?;
 
-        toml::from_str(&content)
-            .with_context(|| format!("Failed to parse config from {}", path.display()))
+        let config: Self = toml::from_str(&content)
+            .with_context(|| format!("Failed to parse config from {}", path.display()))?;
+
+        config.validate()?;
+        Ok(config)
     }
 }
 
@@ -292,5 +409,113 @@ mod tests {
         let toml_str = toml::to_string_pretty(&config).unwrap();
         let parsed: Config = toml::from_str(&toml_str).unwrap();
         assert_eq!(parsed.api.provider, config.api.provider);
+    }
+
+    #[test]
+    fn test_api_config_validation() {
+        let mut api = ApiConfig::default();
+
+        // Valid config should pass
+        assert!(api.validate().is_ok());
+
+        // Invalid model name (empty)
+        api.model = "".to_string();
+        assert!(api.validate().is_err());
+
+        // Invalid model name (too long)
+        api.model = "a".repeat(101);
+        assert!(api.validate().is_err());
+
+        // Invalid model name (special chars)
+        api.model = "gpt-4o; rm -rf /".to_string();
+        assert!(api.validate().is_err());
+
+        // Valid model name
+        api.model = "gpt-4o-mini".to_string();
+        assert!(api.validate().is_ok());
+
+        // Invalid max_tokens
+        api.max_tokens = 0;
+        assert!(api.validate().is_err());
+        api.max_tokens = 1_000_001;
+        assert!(api.validate().is_err());
+        api.max_tokens = 4096;
+        assert!(api.validate().is_ok());
+
+        // Invalid temperature
+        api.temperature = -0.1;
+        assert!(api.validate().is_err());
+        api.temperature = 2.1;
+        assert!(api.validate().is_err());
+        api.temperature = 0.7;
+        assert!(api.validate().is_ok());
+
+        // Invalid API base (no protocol)
+        api.api_base = Some("example.com".to_string());
+        assert!(api.validate().is_err());
+
+        // Valid API base
+        api.api_base = Some("https://api.example.com".to_string());
+        assert!(api.validate().is_ok());
+
+        // Invalid API key (null bytes)
+        api.api_key = Some("key\0with\0nulls".to_string());
+        assert!(api.validate().is_err());
+    }
+
+    #[test]
+    fn test_project_config_validation() {
+        let mut project = ProjectConfig::default();
+
+        // Valid config should pass
+        assert!(project.validate().is_ok());
+
+        // Invalid language code (too short)
+        project.source_lang = "j".to_string();
+        assert!(project.validate().is_err());
+
+        // Invalid language code (too long)
+        project.source_lang = "toolongcode".to_string();
+        assert!(project.validate().is_err());
+
+        // Invalid language code (special chars)
+        project.source_lang = "ja; echo".to_string();
+        assert!(project.validate().is_err());
+
+        // Valid language code
+        project.source_lang = "ja".to_string();
+        assert!(project.validate().is_ok());
+
+        // Valid language code with region
+        project.source_lang = "zh-CN".to_string();
+        assert!(project.validate().is_ok());
+
+        // Same source and target
+        project.target_lang = "zh-CN".to_string();
+        assert!(project.validate().is_err());
+    }
+
+    #[test]
+    fn test_advanced_config_validation() {
+        let mut advanced = AdvancedConfig::default();
+
+        // Valid config should pass
+        assert!(advanced.validate().is_ok());
+
+        // Invalid max_concurrency
+        advanced.max_concurrency = 0;
+        assert!(advanced.validate().is_err());
+        advanced.max_concurrency = 101;
+        assert!(advanced.validate().is_err());
+        advanced.max_concurrency = 8;
+        assert!(advanced.validate().is_ok());
+
+        // Invalid batch_size
+        advanced.batch_size = 0;
+        assert!(advanced.validate().is_err());
+        advanced.batch_size = 1001;
+        assert!(advanced.validate().is_err());
+        advanced.batch_size = 5;
+        assert!(advanced.validate().is_ok());
     }
 }
