@@ -15,9 +15,17 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    /// Verbose output
+    /// Verbose output (show info level logs)
     #[arg(short, long, global = true)]
     verbose: bool,
+
+    /// Debug output (show debug level logs with tracing spans)
+    #[arg(short, long, global = true)]
+    debug: bool,
+
+    /// Quiet mode (suppress all non-error output)
+    #[arg(short, long, global = true)]
+    quiet: bool,
 }
 
 #[derive(Subcommand)]
@@ -127,15 +135,23 @@ enum PluginAction {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Setup logging
-    let filter = if cli.verbose {
-        EnvFilter::new("debug")
-    } else {
+    // Setup logging based on verbosity flags
+    let filter = if cli.debug {
+        // Debug mode: show all debug logs with full tracing spans
+        EnvFilter::new("debug,hyper=info,reqwest=info")
+    } else if cli.verbose {
+        // Verbose mode: show info logs
         EnvFilter::new("info")
+    } else if cli.quiet {
+        // Quiet mode: errors only
+        EnvFilter::new("error")
+    } else {
+        // Default: warnings and above
+        EnvFilter::new("warn")
     };
 
     tracing_subscriber::registry()
-        .with(fmt::layer())
+        .with(fmt::layer().with_target(cli.debug))
         .with(filter)
         .init();
 

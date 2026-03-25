@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+use tracing::{debug, info, instrument};
 
 #[cfg(feature = "rag")]
 use std::sync::Mutex;
@@ -70,12 +71,13 @@ impl TranslationEngine {
     }
 
     /// Translate a single block
+    #[instrument(skip(self, block), fields(block_id = %block.id, source_len = block.source.len()))]
     pub async fn translate_block(&self, block: &TranslationBlock) -> Result<String> {
         // Check cache first
         if let Some(ref cache) = self.cache
             && let Some(cached) = cache.get(&block.id)
         {
-            tracing::debug!("Cache hit for block {}", block.id);
+            debug!("Cache hit");
             return Ok(cached);
         }
 
@@ -87,6 +89,7 @@ impl TranslationEngine {
 
         // Call API
         let _permit = self.semaphore.acquire().await.unwrap();
+        debug!("Acquired semaphore permit, calling API");
         let translation = self
             .client
             .chat(vec![
@@ -104,6 +107,7 @@ impl TranslationEngine {
         // Store in cache
         if let Some(ref cache) = self.cache {
             cache.set(&block.id, &translation)?;
+            debug!("Stored in cache");
         }
 
         // Update vector store (async background)
@@ -123,7 +127,6 @@ impl TranslationEngine {
                 if let Ok(Ok(embeddings)) = embedding {
                     if let Some(vec) = embeddings.first() {
                         let mut store = store.lock().unwrap();
-                        // Need to handle error properly in real app
                         if let Err(e) = store.add(id, vec.clone(), source_for_store) {
                             tracing::warn!("Failed to add to vector store: {}", e);
                         }
@@ -136,6 +139,7 @@ impl TranslationEngine {
     }
 
     /// Translate multiple blocks with context window
+    #[instrument(skip(self, blocks, on_progress), fields(total_blocks = blocks.len()))]
     pub async fn translate_blocks<F>(
         &self,
         blocks: &mut [TranslationBlock],
@@ -145,6 +149,7 @@ impl TranslationEngine {
         F: FnMut(usize, usize, &TranslationBlock),
     {
         let total = blocks.iter().filter(|b| b.needs_translation()).count();
+        info!(needs_translation = total, "Starting batch translation");
         let mut completed = 0;
 
         // Collect previous translations for context

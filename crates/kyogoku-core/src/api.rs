@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tracing::{debug, instrument, warn};
 
 use crate::config::{ApiConfig, ApiProvider};
 
@@ -75,7 +76,10 @@ impl ApiClient {
         self
     }
 
+    #[instrument(skip(self, messages), fields(model = %self.config.model, provider = ?self.config.provider))]
     pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<String> {
+        debug!(message_count = messages.len(), "Sending chat request");
+        
         let request = ChatRequest {
             model: self.config.model.clone(),
             messages,
@@ -85,6 +89,15 @@ impl ApiClient {
 
         let response = self.send_request_with_retry(&request).await?;
 
+        if let Some(ref usage) = response.usage {
+            debug!(
+                prompt_tokens = usage.prompt_tokens,
+                completion_tokens = usage.completion_tokens,
+                total_tokens = usage.total_tokens,
+                "API response received"
+            );
+        }
+
         response
             .choices
             .first()
@@ -92,6 +105,7 @@ impl ApiClient {
             .context("No response content from API")
     }
 
+    #[instrument(skip(self, request), fields(attempt_limit = self.max_retries))]
     async fn send_request_with_retry(&self, request: &ChatRequest) -> Result<ChatResponse> {
         let mut attempt = 0u32;
         let max_retries = self.max_retries;
@@ -104,12 +118,12 @@ impl ApiClient {
                     let err_str = e.to_string();
                     if is_retryable_error(&err_str) && attempt <= max_retries {
                         let delay = exponential_backoff_delay(attempt);
-                        tracing::warn!(
-                            "API request failed (attempt {}/{}): {}. Retrying in {:?}...",
+                        warn!(
                             attempt,
                             max_retries,
-                            err_str,
-                            delay
+                            error = %err_str,
+                            delay_ms = delay.as_millis() as u64,
+                            "API request failed, retrying"
                         );
                         tokio::time::sleep(delay).await;
                     } else {
