@@ -32,3 +32,4 @@ dist/
 
 models/
 tests/perf-output/
+tests/perf-corpus/stress/
