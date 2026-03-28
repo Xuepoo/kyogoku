@@ -1295,10 +1295,108 @@ function renderPreview() {
     `;
 }
 
+// --- Onboarding Wizard ---
+
+function shouldShowOnboarding(): boolean {
+    // Check if user has completed onboarding before
+    const completed = localStorage.getItem('onboarding_completed');
+    if (completed === 'true') return false;
+    
+    // Check if API key is configured
+    if (currentConfig && currentConfig.api.api_key && currentConfig.api.api_key !== 'ENV_VAR' && currentConfig.api.api_key.length > 10) {
+        return false;
+    }
+    
+    return true;
+}
+
+function initOnboarding() {
+    const wizard = document.getElementById('onboarding-wizard');
+    const step1 = document.getElementById('wizard-step-1');
+    const step2 = document.getElementById('wizard-step-2');
+    const step3 = document.getElementById('wizard-step-3');
+    
+    const wizardProvider = document.getElementById('wizard-provider') as HTMLSelectElement;
+    const wizardApiBase = document.getElementById('wizard-api-base') as HTMLInputElement;
+    const wizardModel = document.getElementById('wizard-model') as HTMLInputElement;
+    const wizardApiKey = document.getElementById('wizard-api-key') as HTMLInputElement;
+    
+    if (!wizard || !step1 || !step2 || !step3) return;
+    
+    function showStep(step: number) {
+        [step1, step2, step3].forEach((el, idx) => {
+            el?.classList.toggle('hidden', idx + 1 !== step);
+        });
+    }
+    
+    function closeWizard() {
+        if (wizard) wizard.classList.add('hidden');
+        localStorage.setItem('onboarding_completed', 'true');
+    }
+    
+    // Step 1: Welcome
+    document.getElementById('wizard-skip')?.addEventListener('click', closeWizard);
+    document.getElementById('wizard-next-1')?.addEventListener('click', () => showStep(2));
+    
+    // Step 2: API Config
+    document.getElementById('wizard-back-2')?.addEventListener('click', () => showStep(1));
+    document.getElementById('wizard-skip-2')?.addEventListener('click', closeWizard);
+    document.getElementById('wizard-next-2')?.addEventListener('click', async () => {
+        const provider = wizardProvider?.value || 'custom';
+        const apiBase = wizardApiBase?.value || '';
+        const model = wizardModel?.value || 'google/gemini-2.5-flash';
+        const apiKey = wizardApiKey?.value || '';
+        
+        // Validate API key
+        if (!apiKey || apiKey.length < 10) {
+            showToast('Please enter a valid API key', 'error');
+            wizardApiKey?.focus();
+            return;
+        }
+        
+        // Save config
+        if (!currentConfig) {
+            showToast('Configuration not loaded', 'error');
+            return;
+        }
+        
+        try {
+            await invoke('update_config', {
+                config: {
+                    ...currentConfig,
+                    api: {
+                        ...currentConfig.api,
+                        provider: provider,
+                        api_base: apiBase || undefined,
+                        model: model,
+                        api_key: apiKey
+                    }
+                }
+            });
+            
+            showToast('Configuration saved successfully', 'success');
+            await loadConfig();
+            showStep(3);
+        } catch (e) {
+            showToast(`Failed to save configuration: ${e}`, 'error');
+        }
+    });
+    
+    // Step 3: Done
+    document.getElementById('wizard-finish')?.addEventListener('click', closeWizard);
+    
+    // Show wizard if needed
+    if (shouldShowOnboarding()) {
+        wizard.classList.remove('hidden');
+        showStep(1);
+    }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
     initTheme();
     initKeyboardShortcuts();
-    loadConfig();
+    await loadConfig();
+    initOnboarding();
 
     // Register keyboard shortcuts
     registerShortcut({
