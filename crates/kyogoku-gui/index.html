@@ -169,19 +169,19 @@
     </div>
     
     <div class="container max-w-7xl mx-auto p-4 lg:p-8">
-      <header class="flex justify-between items-center mb-8 border-b border-stone-200 dark:border-stone-800 pb-6">
-        <div>
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent tracking-tight">
-            Kyogoku <span class="text-stone-400 dark:text-stone-600 font-light text-xl ml-2">京极</span>
+      <header class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 lg:mb-8 border-b border-stone-200 dark:border-stone-800 pb-4 lg:pb-6">
+        <div class="text-center sm:text-left">
+            <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent tracking-tight">
+            Kyogoku <span class="text-stone-400 dark:text-stone-600 font-light text-lg sm:text-xl ml-2">京极</span>
             </h1>
-            <p class="text-stone-500 dark:text-stone-400 text-sm mt-1">
+            <p class="text-stone-500 dark:text-stone-400 text-xs sm:text-sm mt-1">
             Professional AI Translation Engine
             </p>
         </div>
         
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 sm:gap-4">
              <!-- Theme Toggle Button -->
-            <button id="theme-toggle" class="p-2 rounded-full bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors text-stone-600 dark:text-amber-400" title="Toggle theme" aria-label="Toggle theme">
+            <button id="theme-toggle" class="p-2.5 sm:p-2 rounded-full bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors text-stone-600 dark:text-amber-400" title="Toggle theme" aria-label="Toggle theme">
             <svg id="theme-icon-dark" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
             </svg>
@@ -192,11 +192,11 @@
         </div>
       </header>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
         <!-- Configuration Section (Sidebar) -->
-        <section class="lg:col-span-4 bg-white dark:bg-stone-900 p-6 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800">
-          <div class="flex items-center justify-between mb-6">
-             <h2 class="text-lg font-bold text-stone-800 dark:text-stone-200 flex items-center gap-2">
+        <section id="config-sidebar" class="lg:col-span-4 lg:sticky-sidebar bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-xl lg:rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800">
+          <div class="flex items-center justify-between mb-4 lg:mb-6">
+             <h2 class="text-base lg:text-lg font-bold text-stone-800 dark:text-stone-200 flex items-center gap-2">
                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 <span data-i18n="settings">Settings</span>
              </h2>
@@ -391,33 +391,33 @@
         </section>
 
         <!-- Right Column: Tasks & Formats -->
-        <div class="lg:col-span-8 flex flex-col gap-6">
+        <div class="lg:col-span-8 flex flex-col gap-4 lg:gap-6">
             <!-- File Upload / Task Area -->
-            <section class="bg-white dark:bg-stone-900 p-6 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800 flex-1 relative overflow-hidden">
+            <section class="bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-xl lg:rounded-2xl shadow-sm border border-stone-200 dark:border-stone-800 flex-1 relative overflow-hidden">
                 <!-- Background decorative elements -->
                 <div class="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
-                <h2 class="text-lg font-bold mb-6 text-stone-800 dark:text-stone-200 flex items-center gap-2 relative z-10">
+                <h2 class="text-base lg:text-lg font-bold mb-4 lg:mb-6 text-stone-800 dark:text-stone-200 flex items-center gap-2 relative z-10">
                     <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                     Translation Workspace
                 </h2>
                 
-                <div id="drop-zone" class="relative z-10 border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-xl p-10 text-center hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all cursor-pointer group">
-                    <div class="bg-stone-100 dark:bg-stone-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-stone-400 dark:text-stone-500 group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                <div id="drop-zone" class="relative z-10 border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-xl p-6 sm:p-10 text-center hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all cursor-pointer group touch-manipulation">
+                    <div class="bg-stone-100 dark:bg-stone-800 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-stone-400 dark:text-stone-500 group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     </div>
-                    <p class="text-stone-700 dark:text-stone-300 font-semibold text-lg">Click to upload files</p>
-                    <p class="text-sm text-stone-500 mt-2">or drag and drop multiple files here</p>
-                    <div class="mt-4 flex gap-2 justify-center">
-                         <span class="px-2 py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.epub</span>
-                         <span class="px-2 py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.txt</span>
-                         <span class="px-2 py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.srt</span>
-                         <span class="px-2 py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.json</span>
+                    <p class="text-stone-700 dark:text-stone-300 font-semibold text-base sm:text-lg">Click to upload files</p>
+                    <p class="text-xs sm:text-sm text-stone-500 mt-1 sm:mt-2">or drag and drop multiple files here</p>
+                    <div class="mt-3 sm:mt-4 flex flex-wrap gap-1 sm:gap-2 justify-center">
+                         <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.epub</span>
+                         <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.txt</span>
+                         <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.srt</span>
+                         <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-stone-100 dark:bg-stone-800 rounded text-xs text-stone-500 border border-stone-200 dark:border-stone-700">.json</span>
                     </div>
                 </div>
                 
                 <!-- File Queue -->
-                <div id="file-queue-section" class="mt-8 hidden">
+                <div id="file-queue-section" class="mt-6 sm:mt-8 hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider">Queue</h3>
                         <div class="flex gap-2">
@@ -441,49 +441,49 @@
                     <div class="bg-stone-50 dark:bg-stone-800/50 rounded-xl p-5 border border-stone-200 dark:border-stone-700/50 relative overflow-hidden">
                         <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent pointer-events-none"></div>
                         <h3 class="font-bold text-amber-600 dark:text-amber-500 text-xs uppercase tracking-wider mb-4 relative z-10">Batch Progress</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm relative z-10">
-                            <div class="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-sm relative z-10">
+                            <div class="bg-white dark:bg-stone-800 p-2 sm:p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
                                 <span class="text-stone-400 text-[10px] uppercase font-bold tracking-wider">Files</span>
-                                <p class="text-stone-800 dark:text-stone-200 font-mono text-lg font-semibold"><span id="stats-files-completed">0</span><span class="text-stone-400 text-sm">/</span><span id="stats-files-total">0</span></p>
+                                <p class="text-stone-800 dark:text-stone-200 font-mono text-base sm:text-lg font-semibold"><span id="stats-files-completed">0</span><span class="text-stone-400 text-sm">/</span><span id="stats-files-total">0</span></p>
                             </div>
-                            <div class="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
+                            <div class="bg-white dark:bg-stone-800 p-2 sm:p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
                                 <span class="text-stone-400 text-[10px] uppercase font-bold tracking-wider">Blocks</span>
-                                <p class="text-stone-800 dark:text-stone-200 font-mono text-lg font-semibold"><span id="stats-blocks-completed">0</span><span class="text-stone-400 text-sm">/</span><span id="stats-blocks-total">0</span></p>
+                                <p class="text-stone-800 dark:text-stone-200 font-mono text-base sm:text-lg font-semibold"><span id="stats-blocks-completed">0</span><span class="text-stone-400 text-sm">/</span><span id="stats-blocks-total">0</span></p>
                             </div>
-                            <div class="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
+                            <div class="bg-white dark:bg-stone-800 p-2 sm:p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
                                 <span class="text-stone-400 text-[10px] uppercase font-bold tracking-wider">Elapsed</span>
-                                <p class="text-stone-800 dark:text-stone-200 font-mono text-lg font-semibold" id="stats-elapsed">00:00</p>
+                                <p class="text-stone-800 dark:text-stone-200 font-mono text-base sm:text-lg font-semibold" id="stats-elapsed">00:00</p>
                             </div>
-                            <div class="bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
+                            <div class="bg-white dark:bg-stone-800 p-2 sm:p-3 rounded-lg border border-stone-100 dark:border-stone-700/50 shadow-sm">
                                 <span class="text-stone-400 text-[10px] uppercase font-bold tracking-wider">ETA</span>
-                                <p class="text-stone-800 dark:text-stone-200 font-mono text-lg font-semibold" id="stats-eta">--:--</p>
+                                <p class="text-stone-800 dark:text-stone-200 font-mono text-base sm:text-lg font-semibold" id="stats-eta">--:--</p>
                             </div>
                         </div>
-                        <div class="mt-4 relative z-10">
+                        <div class="mt-3 sm:mt-4 relative z-10">
                             <div class="bg-stone-200 dark:bg-stone-700 rounded-full h-1.5 overflow-hidden">
                                 <div id="stats-progress-bar" class="bg-gradient-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 shadow-[0_0_10px_rgba(251,191,36,0.5)]" style="width: 0%"></div>
                             </div>
                         </div>
-                        <div class="mt-4 flex gap-2 justify-end relative z-10">
-                            <button id="export-csv-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50" disabled>
+                        <div class="mt-3 sm:mt-4 flex flex-wrap gap-2 justify-end relative z-10">
+                            <button id="export-csv-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50 touch-manipulation min-h-[36px]" disabled>
                                 Export CSV
                             </button>
-                            <button id="export-json-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50" disabled>
+                            <button id="export-json-btn" class="text-xs bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg transition-all font-medium disabled:opacity-50 touch-manipulation min-h-[36px]" disabled>
                                 Export JSON
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <div id="preview-section" class="mt-6 hidden">
-                    <div class="flex justify-between items-center mb-3">
+                <div id="preview-section" class="mt-4 sm:mt-6 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
                         <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider flex items-center gap-2">
                             <span>Live Preview</span>
                             <span id="preview-status" class="text-[10px] text-amber-500 font-mono bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/30">IDLE</span>
                         </h3>
-                        <div class="flex gap-2">
-                            <input type="text" id="preview-search" placeholder="Search..." class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-32 placeholder-stone-400">
-                            <select id="preview-filter" class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-600 dark:text-stone-300">
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <input type="text" id="preview-search" placeholder="Search..." class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 sm:py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 flex-1 sm:w-32 placeholder-stone-400 min-h-[36px] sm:min-h-0">
+                            <select id="preview-filter" class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 sm:py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-600 dark:text-stone-300 min-h-[36px] sm:min-h-0">
                                 <option value="all">All</option>
                                 <option value="source">Source Only</option>
                                 <option value="target">Target Only</option>
@@ -491,12 +491,12 @@
                             </select>
                         </div>
                     </div>
-                    <div class="bg-stone-50 dark:bg-stone-950 rounded-xl h-80 overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-inner flex flex-col p-4 font-mono text-sm leading-relaxed custom-scrollbar relative" id="preview-container">
+                    <div class="bg-stone-50 dark:bg-stone-950 rounded-xl h-60 sm:h-80 overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-inner flex flex-col p-3 sm:p-4 font-mono text-xs sm:text-sm leading-relaxed custom-scrollbar relative" id="preview-container">
                         <!-- Rows injected here -->
                     </div>
                 </div>
 
-                <div class="mt-6" id="recent-activity">
+                <div class="mt-4 sm:mt-6" id="recent-activity">
                     <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider mb-3">Recent Activity</h3>
                     <div class="bg-stone-50 dark:bg-stone-900/50 rounded-lg p-4 text-center border border-stone-100 dark:border-stone-800 border-dashed">
                         <p class="text-sm text-stone-400 italic">No recent tasks found.</p>

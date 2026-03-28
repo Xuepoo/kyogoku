@@ -60,3 +60,158 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Mobile-first responsive improvements */
+@media (max-width: 640px) {
+  /* Header: stack vertically on mobile */
+  header.flex {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  /* Make buttons more touch-friendly */
+  button, 
+  .btn,
+  [type="button"],
+  [type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Form inputs: larger touch targets */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    min-height: 44px;
+  }
+  
+  /* Reduce padding on mobile */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Hide less important elements on mobile */
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  /* Full width buttons on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+  
+  /* Stack file queue items vertically */
+  #file-list .flex.items-center {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Smaller text in preview */
+  #preview-container {
+    font-size: 0.75rem !important;
+    line-height: 1.5;
+  }
+  
+  /* Wizard modal: full screen on mobile */
+  #onboarding-wizard > div {
+    max-height: 100vh;
+    height: 100%;
+    border-radius: 0;
+    max-width: 100%;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1023px) {
+  /* 2-column grid for some elements */
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  /* Slightly larger touch targets */
+  button, 
+  .btn,
+  [type="button"],
+  [type="submit"] {
+    min-height: 40px;
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1024px) {
+  /* Sticky sidebar on desktop */
+  .lg\:sticky-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+  }
+}
+
+/* Smooth transitions for responsive changes */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
+
+/* Safe area insets for mobile devices with notches */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover states on touch devices */
+  .hover\:bg-stone-300:hover {
+    background-color: inherit;
+  }
+  
+  /* Larger click targets */
+  button, a, input, select {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent text selection on buttons */
+  button {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Collapsible sidebar toggle (mobile) */
+.sidebar-collapsed {
+  display: none !important;
+}
+
+@media (max-width: 1023px) {
+  .sidebar-toggle-visible {
+    display: flex !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  header, 
+  footer, 
+  nav, 
+  button,
+  #toast-container,
+  #onboarding-wizard,
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
