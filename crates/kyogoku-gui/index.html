@@ -488,7 +488,12 @@
                                 <option value="source">Source Only</option>
                                 <option value="target">Target Only</option>
                                 <option value="warnings">Warnings Only</option>
+                                <option value="diff">Diff View</option>
                             </select>
+                            <button id="diff-toggle-btn" class="hidden sm:flex items-center gap-1 px-2 py-1 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 rounded-md text-xs transition-colors" title="Toggle character diff highlighting">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                <span>Diff</span>
+                            </button>
                         </div>
                     </div>
                     <div class="bg-stone-50 dark:bg-stone-950 rounded-xl h-60 sm:h-80 overflow-y-auto border border-stone-200 dark:border-stone-800 shadow-inner flex flex-col p-3 sm:p-4 font-mono text-xs sm:text-sm leading-relaxed custom-scrollbar relative" id="preview-container">

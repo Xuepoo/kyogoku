@@ -16,8 +16,69 @@ interface PreviewItem {
 }
 
 let previewItems: PreviewItem[] = [];
-let previewFilter: 'all' | 'source' | 'target' | 'warnings' = 'all';
+let previewFilter: 'all' | 'source' | 'target' | 'warnings' | 'diff' = 'all';
 let previewSearch = '';
+let diffHighlightEnabled = false;
+
+// --- Simple Diff Algorithm ---
+// Highlights differences between source and target at character level
+function computeDiff(source: string, target: string): { source: string; target: string } {
+    // For translation, we want to show unique characters in each string
+    // Source characters not in target → red highlight
+    // Target characters not in source → green highlight
+    
+    // Create character frequency maps
+    const sourceChars = new Map<string, number>();
+    const targetChars = new Map<string, number>();
+    
+    for (const c of source) {
+        sourceChars.set(c, (sourceChars.get(c) || 0) + 1);
+    }
+    for (const c of target) {
+        targetChars.set(c, (targetChars.get(c) || 0) + 1);
+    }
+    
+    // Find characters unique to source (deleted)
+    const uniqueToSource = new Set<string>();
+    for (const [char, count] of sourceChars) {
+        const targetCount = targetChars.get(char) || 0;
+        if (targetCount < count) {
+            uniqueToSource.add(char);
+        }
+    }
+    
+    // Find characters unique to target (added)
+    const uniqueToTarget = new Set<string>();
+    for (const [char, count] of targetChars) {
+        const sourceCount = sourceChars.get(char) || 0;
+        if (sourceCount < count) {
+            uniqueToTarget.add(char);
+        }
+    }
+    
+    // Build highlighted strings
+    const highlightSource = source.split('').map(c => {
+        if (uniqueToSource.has(c)) {
+            return `<span class="bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 px-0.5 rounded">${escapeHtml(c)}</span>`;
+        }
+        return escapeHtml(c);
+    }).join('');
+    
+    const highlightTarget = target.split('').map(c => {
+        if (uniqueToTarget.has(c)) {
+            return `<span class="bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 px-0.5 rounded">${escapeHtml(c)}</span>`;
+        }
+        return escapeHtml(c);
+    }).join('');
+    
+    return { source: highlightSource, target: highlightTarget };
+}
+
+function escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 function checkQuality(source: string, target: string): string[] {
     const warnings: string[] = [];
@@ -1159,12 +1220,6 @@ const ROW_HEIGHT = 80;
 let virtualScrollTop = 0;
 let filteredItems: PreviewItem[] = [];
 
-function escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function highlightTerms(text: string, mode: 'source' | 'target' = 'source'): string {
     if (!text) return "";
     let result = escapeHtml(text);
@@ -1210,17 +1265,30 @@ function getFilteredItems(): PreviewItem[] {
 }
 
 function renderPreviewRow(item: PreviewItem): string {
-    const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings';
-    const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings';
-    const isTwoCol = previewFilter === 'all' || previewFilter === 'warnings';
+    const isDiffMode = previewFilter === 'diff' || diffHighlightEnabled;
+    const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings' || previewFilter === 'diff';
+    const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings' || previewFilter === 'diff';
+    const isTwoCol = previewFilter === 'all' || previewFilter === 'warnings' || previewFilter === 'diff';
+    
+    let sourceHtml = '';
+    let targetHtml = '';
+    
+    if (isDiffMode) {
+        const diff = computeDiff(item.source, item.target);
+        sourceHtml = diff.source;
+        targetHtml = diff.target;
+    } else {
+        sourceHtml = highlightTerms(item.source, 'source');
+        targetHtml = highlightTerms(item.target, 'target');
+    }
     
     let html = `<div class="grid ${isTwoCol ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-4 border-b border-stone-200 dark:border-stone-800 text-sm hover:bg-stone-100 dark:hover:bg-stone-900/80 transition-colors" style="min-height: ${ROW_HEIGHT}px;">`;
     
     if (showSource) {
-        html += `<div class="text-stone-600 dark:text-stone-400 font-serif leading-relaxed ${isTwoCol ? 'text-right border-r border-stone-200 dark:border-stone-800 pr-4' : ''}">${highlightTerms(item.source, 'source')}</div>`;
+        html += `<div class="text-stone-600 dark:text-stone-400 font-serif leading-relaxed ${isTwoCol ? 'text-right border-r border-stone-200 dark:border-stone-800 pr-4' : ''}">${sourceHtml}</div>`;
     }
     if (showTarget) {
-        html += `<div class="text-stone-900 dark:text-emerald-100 font-serif leading-relaxed ${isTwoCol ? 'pl-2' : ''}">${highlightTerms(item.target, 'target')}</div>`;
+        html += `<div class="text-stone-900 dark:text-emerald-100 font-serif leading-relaxed ${isTwoCol ? 'pl-2' : ''}">${targetHtml}</div>`;
     }
     if (item.warnings && item.warnings.length > 0) {
         html += `<div class="col-span-2 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg flex items-center gap-2 mt-2 border border-amber-200 dark:border-amber-800/30">
@@ -1681,7 +1749,19 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (previewFilterSelect) {
         previewFilterSelect.addEventListener('change', (e) => {
-            previewFilter = (e.target as HTMLSelectElement).value as any;
+            previewFilter = (e.target as HTMLSelectElement).value as typeof previewFilter;
+            renderPreview();
+        });
+    }
+    
+    // Diff toggle button
+    const diffToggleBtn = document.getElementById('diff-toggle-btn');
+    if (diffToggleBtn) {
+        diffToggleBtn.addEventListener('click', () => {
+            diffHighlightEnabled = !diffHighlightEnabled;
+            diffToggleBtn.classList.toggle('bg-amber-500', diffHighlightEnabled);
+            diffToggleBtn.classList.toggle('text-white', diffHighlightEnabled);
+            diffToggleBtn.classList.toggle('dark:bg-amber-600', diffHighlightEnabled);
             renderPreview();
         });
     }
