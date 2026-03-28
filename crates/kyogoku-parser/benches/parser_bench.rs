@@ -11,6 +11,8 @@ fn bench_parsers(c: &mut Criterion) {
     let ass_bytes = include_bytes!("../tests/fixtures/subtitles/effect_tags.ass");
     let srt_bytes = include_bytes!("../tests/fixtures/subtitles/standard.srt");
     let json_bytes = include_bytes!("../tests/fixtures/games/mtool_export.json");
+    let vtt_bytes = include_bytes!("../tests/fixtures/subtitles/standard.vtt");
+    let txt_bytes = include_bytes!("../tests/fixtures/text/sample.txt");
 
     let mut group = c.benchmark_group("parser_benchmarks");
 
@@ -39,6 +41,20 @@ fn bench_parsers(c: &mut Criterion) {
         b.iter(|| {
             let parser = registry.get_parser(Path::new("test.json")).unwrap();
             parser.parse(black_box(json_bytes)).unwrap();
+        })
+    });
+
+    group.bench_function("parse_vtt", |b| {
+        b.iter(|| {
+            let parser = registry.get_parser(Path::new("test.vtt")).unwrap();
+            parser.parse(black_box(vtt_bytes)).unwrap();
+        })
+    });
+
+    group.bench_function("parse_txt", |b| {
+        b.iter(|| {
+            let parser = registry.get_parser(Path::new("test.txt")).unwrap();
+            parser.parse(black_box(txt_bytes)).unwrap();
         })
     });
 
