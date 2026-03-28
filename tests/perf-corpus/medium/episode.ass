@@ -1,0 +1,58 @@
+[Script Info]
+Title: Medium Test Episode
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,10,10,10,1
+Style: Narrator,Arial,42,&H00CCCCCC,&H000000FF,&H00000000,&H80000000,0,1,0,0,100,100,0,0,1,2,1,2,10,10,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:04.00,Narrator,,0,0,0,,朝の光が教室に差し込む中、私は窓際の席に座っていた
+Dialogue: 0,0:00:05.00,0:00:07.00,Default,健太,0,0,0,,おはよう、美咲
+Dialogue: 0,0:00:07.50,0:00:09.00,Default,美咲,0,0,0,,おはよう。今日も早いね
+Dialogue: 0,0:00:09.50,0:00:12.00,Default,健太,0,0,0,,まあな。昨日の宿題、終わった？
+Dialogue: 0,0:00:12.50,0:00:15.00,Default,美咲,0,0,0,,うん、なんとかね。数学が難しかったけど
+Dialogue: 0,0:00:15.50,0:00:17.50,Default,健太,0,0,0,,だよな。俺も苦労したわ
+Dialogue: 0,0:00:18.00,0:00:21.00,Default,田中先生,0,0,0,,はい、席についてー。今日は転校生を紹介します
+Dialogue: 0,0:00:22.00,0:00:24.00,Default,健太,0,0,0,,転校生？珍しいな
+Dialogue: 0,0:00:25.00,0:00:27.00,Default,田中先生,0,0,0,,入って
+Dialogue: 0,0:00:28.00,0:00:32.00,Default,雪乃,0,0,0,,白石雪乃です。よろしくお願いします
+Dialogue: 0,0:00:33.00,0:00:36.00,Default,田中先生,0,0,0,,白石さんの席は……あそこ、窓際の空いてる席ね
+Dialogue: 0,0:00:37.00,0:00:39.00,Default,美咲,0,0,0,,よろしくね、白石さん
+Dialogue: 0,0:00:39.50,0:00:41.00,Default,雪乃,0,0,0,,……よろしく
+Dialogue: 0,0:00:42.00,0:00:44.00,Default,健太,0,0,0,,なんか、変わった子だな
+Dialogue: 0,0:00:44.50,0:00:47.00,Default,美咲,0,0,0,,そうかな？ただ緊張してるだけかも
+Dialogue: 0,0:00:48.00,0:00:50.00,Default,健太,0,0,0,,かもな
+Dialogue: 0,0:01:00.00,0:01:03.00,Default,美咲,0,0,0,,ねえ、一緒にお昼食べない？
+Dialogue: 0,0:01:03.50,0:01:05.00,Default,雪乃,0,0,0,,……いいの？
+Dialogue: 0,0:01:05.50,0:01:07.50,Default,美咲,0,0,0,,もちろん。友達になりたいから
+Dialogue: 0,0:01:08.00,0:01:10.00,Default,雪乃,0,0,0,,ありがとう……
+Dialogue: 0,0:01:10.50,0:01:12.00,Default,美咲,0,0,0,,どういたしまして。さ、行こう
+Dialogue: 0,0:01:15.00,0:01:17.00,Default,美咲,0,0,0,,いい天気だね
+Dialogue: 0,0:01:17.50,0:01:18.50,Default,雪乃,0,0,0,,うん……
+Dialogue: 0,0:01:19.00,0:01:22.00,Default,美咲,0,0,0,,前の学校はどんなところだったの？
+Dialogue: 0,0:01:22.50,0:01:26.00,Default,雪乃,0,0,0,,……普通の学校。でも、あまり友達はいなかった
+Dialogue: 0,0:01:26.50,0:01:29.50,Default,美咲,0,0,0,,そうなんだ。でも、ここでは私がいるから大丈夫だよ
+Dialogue: 0,0:01:30.00,0:01:32.00,Default,雪乃,0,0,0,,美咲さんは……優しいね
+Dialogue: 0,0:01:32.50,0:01:34.50,Default,美咲,0,0,0,,そんなことないよ。普通だよ
+Dialogue: 0,0:01:35.00,0:01:37.50,Default,雪乃,0,0,0,,普通が、一番難しいのに
+Dialogue: 0,0:02:00.00,0:02:02.00,Default,美咲,0,0,0,,家、どこなの？
+Dialogue: 0,0:02:02.50,0:02:04.50,Default,雪乃,0,0,0,,駅の近くのマンション
+Dialogue: 0,0:02:05.00,0:02:07.00,Default,美咲,0,0,0,,じゃあ、途中まで一緒だね
+Dialogue: 0,0:02:07.50,0:02:08.50,Default,雪乃,0,0,0,,うん
+Dialogue: 0,0:02:10.00,0:02:12.00,Default,美咲,0,0,0,,ねえ、雪乃
+Dialogue: 0,0:02:12.50,0:02:13.50,Default,雪乃,0,0,0,,なに？
+Dialogue: 0,0:02:14.00,0:02:17.00,Default,美咲,0,0,0,,なんでこっちに転校してきたの？
+Dialogue: 0,0:02:17.50,0:02:19.50,Default,雪乃,0,0,0,,……親の仕事の都合
+Dialogue: 0,0:02:20.00,0:02:21.00,Default,美咲,0,0,0,,そうなんだ
+Dialogue: 0,0:02:25.00,0:02:26.50,Default,美咲,0,0,0,,また明日ね
+Dialogue: 0,0:02:27.00,0:02:28.50,Default,雪乃,0,0,0,,うん。また明日
+Dialogue: 0,0:03:00.00,0:03:02.00,Default,母,0,0,0,,おかえり。今日はどうだった？
+Dialogue: 0,0:03:02.50,0:03:05.00,Default,美咲,0,0,0,,転校生が来たんだ。白石雪乃って子
+Dialogue: 0,0:03:05.50,0:03:07.50,Default,母,0,0,0,,へえ、仲良くなれそう？
+Dialogue: 0,0:03:08.00,0:03:09.50,Default,美咲,0,0,0,,うん、多分ね
+Dialogue: 0,0:03:10.00,0:03:11.50,Default,母,0,0,0,,よかったじゃない
