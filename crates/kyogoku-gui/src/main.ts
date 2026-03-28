@@ -343,10 +343,14 @@ const apiProvider = document.querySelector("#api-provider") as HTMLSelectElement
 const apiBase = document.querySelector("#api-base") as HTMLInputElement;
 const apiKey = document.querySelector("#api-key") as HTMLInputElement;
 const apiModel = document.querySelector("#api-model") as HTMLInputElement;
+const apiTemperature = document.querySelector("#api-temperature") as HTMLInputElement;
+const apiTemperatureValue = document.querySelector("#api-temperature-value") as HTMLElement;
+const apiMaxTokens = document.querySelector("#api-max-tokens") as HTMLInputElement;
 const translationStyle = document.querySelector("#translation-style") as HTMLSelectElement;
 const contextSize = document.querySelector("#context-size") as HTMLInputElement;
 const maxConcurrency = document.querySelector("#max-concurrency") as HTMLInputElement;
 const batchSize = document.querySelector("#batch-size") as HTMLInputElement;
+const budgetPresetBtn = document.querySelector("#budget-preset-btn") as HTMLButtonElement;
 
 // RAG Elements
 const ragEnabled = document.querySelector("#rag-enabled") as HTMLInputElement;
@@ -387,6 +391,11 @@ async function loadConfig() {
         if (apiKey) apiKey.value = config.api.api_key || "";
         if (apiBase) apiBase.value = config.api.api_base || "";
         if (apiModel) apiModel.value = config.api.model;
+        if (apiTemperature) {
+            apiTemperature.value = config.api.temperature?.toString() || "0.3";
+            if (apiTemperatureValue) apiTemperatureValue.textContent = apiTemperature.value;
+        }
+        if (apiMaxTokens) apiMaxTokens.value = (config.api.max_tokens || 4096).toString();
         if (translationStyle) translationStyle.value = config.translation.style;
         if (contextSize) contextSize.value = config.translation.context_size.toString();
         if (maxConcurrency) maxConcurrency.value = config.advanced.max_concurrency.toString();
@@ -430,6 +439,9 @@ async function saveConfig() {
 
     // Create updated config object
     // Note: We need to carefully reconstruct the nested structure to match Rust struct
+    const parsedTemp = apiTemperature ? parseFloat(apiTemperature.value) : currentConfig.api.temperature;
+    const parsedMaxTokens = apiMaxTokens ? parseInt(apiMaxTokens.value, 10) : currentConfig.api.max_tokens;
+
     const newConfig: Config = {
         api: {
             ...currentConfig.api,
@@ -437,6 +449,8 @@ async function saveConfig() {
             api_key: apiKey.value || null,
             api_base: apiBase.value || undefined,
             model: apiModel.value,
+            temperature: Number.isFinite(parsedTemp) ? parsedTemp : currentConfig.api.temperature,
+            max_tokens: Number.isFinite(parsedMaxTokens) ? parsedMaxTokens : currentConfig.api.max_tokens,
         },
         translation: {
             ...currentConfig.translation,
@@ -474,6 +488,17 @@ async function saveConfig() {
         notifyError(e);
         console.error(e);
     }
+}
+
+function applyBudgetPreset() {
+    if (apiProvider) apiProvider.value = "google";
+    if (apiBase) apiBase.value = "https://openrouter.ai/api/v1";
+    if (apiModel) apiModel.value = "google/gemini-2.5-flash";
+    if (apiTemperature) {
+        apiTemperature.value = "0.3";
+        if (apiTemperatureValue) apiTemperatureValue.textContent = apiTemperature.value;
+    }
+    if (apiMaxTokens) apiMaxTokens.value = "4096";
 }
 
 // --- I18n Functions ---
@@ -588,6 +613,7 @@ const TOKEN_PRICING: {[key: string]: {input: number, output: number}} = {
     // Google pricing per 1M tokens
     'gemini-1.5-pro': { input: 1.25, output: 5.00 },
     'gemini-1.5-flash': { input: 0.075, output: 0.30 },
+    'google/gemini-2.5-flash': { input: 0.075, output: 0.30 },
     
     // Default for unknown models
     'default': { input: 1.00, output: 3.00 }
@@ -946,55 +972,63 @@ function renderFileQueue() {
     
     if (fileQueue.length === 0) {
         fileQueueContainer.innerHTML = `
-            <div class="text-center py-8 px-4">
-                <div class="text-4xl mb-3 opacity-50">📂</div>
-                <p class="text-sm text-gray-400 mb-2">No files in queue</p>
-                <p class="text-xs text-gray-500">
-                    Drag & drop files here or click <span class="text-amber-500">+ Add Files</span> to get started
+            <div class="text-center py-8 px-4 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-xl bg-stone-50/50 dark:bg-stone-900/50">
+                <div class="text-3xl mb-3 opacity-40 grayscale">📂</div>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-2 font-medium">No files in queue</p>
+                <p class="text-xs text-stone-400 dark:text-stone-500">
+                    Files you add will appear here ready for batch processing
                 </p>
             </div>
         `;
         return;
     }
     
-    const statusColors = {
-        pending: 'bg-gray-600 text-gray-300',
-        processing: 'bg-blue-600 text-white animate-pulse',
-        complete: 'bg-green-600 text-white',
-        failed: 'bg-red-600 text-white'
+    const statusColors: Record<string, string> = {
+        pending: 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300',
+        processing: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 animate-pulse',
+        complete: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+        failed: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
     };
     
-    const statusIcons = {
-        pending: '⏳',
-        processing: '🔄',
-        complete: '✅',
-        failed: '❌'
+    const statusIcons: Record<string, string> = {
+        pending: 'Wait',
+        processing: 'Processing',
+        complete: 'Done',
+        failed: 'Failed'
     };
     
     fileQueueContainer.innerHTML = fileQueue.map(item => `
-        <div class="bg-gray-900/50 rounded p-3 flex items-center justify-between border border-gray-700 hover:border-gray-600 transition">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="${statusColors[item.status]} px-2 py-0.5 rounded text-xs font-mono">
-                        ${statusIcons[item.status]} ${item.status.toUpperCase()}
+        <div class="bg-white dark:bg-stone-900 p-3 rounded-lg border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm hover:border-amber-300 dark:hover:border-amber-700/50 transition-colors group">
+            <div class="flex-1 min-w-0 pr-4">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="${statusColors[item.status]} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
+                        ${item.status === 'processing' ? '<span class="animate-spin">⟳</span>' : ''}
+                        ${statusIcons[item.status]}
                     </span>
-                    <span class="text-gray-300 text-sm font-medium truncate">${item.file_name}</span>
+                    <span class="text-stone-700 dark:text-stone-200 text-sm font-semibold truncate" title="${item.file_name}">${item.file_name}</span>
                 </div>
-                ${item.word_count ? `<p class="text-xs text-gray-500">~${item.word_count} blocks</p>` : ''}
+                
+                <div class="flex items-center gap-4">
+                    ${item.word_count ? `<p class="text-[10px] text-stone-400 font-mono">~${item.word_count} blocks</p>` : ''}
+                    ${item.error_message ? `<p class="text-[10px] text-rose-500 font-medium truncate max-w-[200px]" title="${item.error_message}">${item.error_message}</p>` : ''}
+                </div>
+                
                 ${item.status === 'processing' ? `
-                    <div class="mt-2 bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                        <div class="bg-blue-500 h-full transition-all duration-300" style="width: ${item.progress}%"></div>
+                    <div class="mt-2 bg-stone-200 dark:bg-stone-800 rounded-full h-1 overflow-hidden">
+                        <div class="bg-blue-500 h-full transition-all duration-300 rounded-full" style="width: ${Math.max(5, item.progress)}%"></div>
                     </div>
                 ` : ''}
-                ${item.error_message ? `<p class="text-xs text-red-400 mt-1">${item.error_message}</p>` : ''}
             </div>
+            
             <button 
-                class="ml-3 text-gray-500 hover:text-red-400 transition" 
+                class="p-1.5 text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors ${item.status === 'processing' ? 'opacity-30 cursor-not-allowed' : ''}" 
                 onclick="window.removeFileFromQueue('${item.id}')"
                 ${item.status === 'processing' ? 'disabled' : ''}
+                title="Remove from queue"
+                aria-label="Remove from queue"
             >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                 </svg>
             </button>
         </div>
@@ -1008,8 +1042,24 @@ async function startBatchTranslation() {
         
         if (startBatchBtn) {
             startBatchBtn.disabled = true;
-            startBatchBtn.textContent = "⏸ Processing...";
+            startBatchBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+            `;
         }
+
+        // Show loading state immediately
+        if (previewSection) previewSection.classList.remove("hidden");
+        if (recentActivity) recentActivity.classList.add("hidden");
+        renderSkeletonPreview();
+        
+        // Show skeleton stats
+        if (statsPanel) statsPanel.classList.remove('hidden');
+        if (statsFilesCompleted) statsFilesCompleted.innerHTML = '<span class="skeleton rounded px-2 w-8 inline-block">&nbsp;</span>';
+        if (statsBlocksCompleted) statsBlocksCompleted.innerHTML = '<span class="skeleton rounded px-2 w-12 inline-block">&nbsp;</span>';
         
         await invoke("start_batch_translation");
     } catch (e) {
@@ -1018,7 +1068,10 @@ async function startBatchTranslation() {
         
         if (startBatchBtn) {
             startBatchBtn.disabled = false;
-            startBatchBtn.textContent = "▶ Start Batch";
+            startBatchBtn.innerHTML = `
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Start Batch
+            `;
         }
     }
 }
@@ -1057,11 +1110,15 @@ function renderRecentActivity() {
     
     if (history.length === 0) {
         recentActivity.innerHTML = `
-            <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
-            <div class="bg-gray-900/50 rounded p-6 text-center border border-gray-800/50">
-                <div class="text-3xl mb-2 opacity-50">📋</div>
-                <p class="text-sm text-gray-400 mb-1">No recent activity</p>
-                <p class="text-xs text-gray-500">Your translation history will appear here</p>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider">Recent Activity</h3>
+            </div>
+            <div class="bg-stone-50 dark:bg-stone-900/50 rounded-lg p-8 text-center border border-stone-200 dark:border-stone-800 border-dashed">
+                <div class="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <p class="text-sm font-medium text-stone-600 dark:text-stone-300 mb-1">No recent activity</p>
+                <p class="text-xs text-stone-500 dark:text-stone-500">Your translation history will appear here</p>
             </div>
         `;
         return;
@@ -1069,23 +1126,174 @@ function renderRecentActivity() {
     
     const items = history.map(item => {
         const date = new Date(item.timestamp);
-        const timeStr = date.toLocaleString();
+        const timeStr = date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         return `
-            <div class="flex justify-between items-center p-2 bg-gray-900/30 rounded text-sm">
-                <span class="text-gray-300 truncate max-w-xs">${item.filename}</span>
-                <span class="text-gray-500 text-xs">${timeStr}</span>
+            <div class="flex justify-between items-center p-3 bg-stone-50 dark:bg-stone-800/50 hover:bg-white dark:hover:bg-stone-800 rounded-lg border border-transparent hover:border-stone-200 dark:hover:border-stone-700 transition-all group cursor-default">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="bg-amber-100 dark:bg-amber-900/30 p-1.5 rounded-md text-amber-600 dark:text-amber-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <span class="text-stone-700 dark:text-stone-300 text-sm font-medium truncate">${item.filename}</span>
+                </div>
+                <span class="text-stone-400 dark:text-stone-500 text-xs whitespace-nowrap">${timeStr}</span>
             </div>
         `;
     }).join("");
     
     recentActivity.innerHTML = `
-        <h3 class="font-bold text-gray-400 text-sm uppercase tracking-wider mb-3">Recent Activity</h3>
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-stone-500 dark:text-stone-400 text-xs uppercase tracking-wider">Recent Activity</h3>
+            <button onclick="localStorage.removeItem('kyogoku_history'); location.reload();" class="text-[10px] text-stone-400 hover:text-rose-500 transition-colors">Clear History</button>
+        </div>
         <div class="space-y-2">${items}</div>
     `;
 }
 
 
 // --- Event Listeners ---
+
+// --- Preview Helpers ---
+
+const VISIBLE_ROWS = 50;
+const ROW_HEIGHT = 80;
+let virtualScrollTop = 0;
+let filteredItems: PreviewItem[] = [];
+
+function escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function highlightTerms(text: string, mode: 'source' | 'target' = 'source'): string {
+    if (!text) return "";
+    let result = escapeHtml(text);
+    
+    if (!glossaryTerms.length) return result;
+
+    const sortedTerms = [...glossaryTerms].sort((a, b) => {
+        const lenA = mode === 'source' ? a.source.length : a.target.length;
+        const lenB = mode === 'source' ? b.source.length : b.target.length;
+        return lenB - lenA;
+    });
+    
+    for (const term of sortedTerms) {
+        const key = mode === 'source' ? term.source : term.target;
+        const escapedKey = escapeHtml(key);
+        
+        if (result.includes(escapedKey)) {
+            const tooltip = mode === 'source' 
+                ? `${term.target}${term.context ? ' (' + term.context + ')' : ''}`
+                : `${term.source}${term.context ? ' (' + term.context + ')' : ''}`;
+            const escapedTooltip = escapeHtml(tooltip);
+                
+            const replacement = `<span class="text-amber-600 dark:text-amber-400 font-medium border-b border-dashed border-amber-500/50 cursor-help" title="Glossary: ${escapedTooltip}">${escapedKey}</span>`;
+            result = result.split(escapedKey).join(replacement);
+        }
+    }
+    return result;
+}
+
+function getFilteredItems(): PreviewItem[] {
+    return previewItems.filter(item => {
+        if (previewSearch) {
+            const searchLower = previewSearch.toLowerCase();
+            if (!item.source.toLowerCase().includes(searchLower) && !item.target.toLowerCase().includes(searchLower)) {
+                return false;
+            }
+        }
+        if (previewFilter === 'warnings') {
+            return item.warnings && item.warnings.length > 0;
+        }
+        return true;
+    });
+}
+
+function renderPreviewRow(item: PreviewItem): string {
+    const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings';
+    const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings';
+    const isTwoCol = previewFilter === 'all' || previewFilter === 'warnings';
+    
+    let html = `<div class="grid ${isTwoCol ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-4 border-b border-stone-200 dark:border-stone-800 text-sm hover:bg-stone-100 dark:hover:bg-stone-900/80 transition-colors" style="min-height: ${ROW_HEIGHT}px;">`;
+    
+    if (showSource) {
+        html += `<div class="text-stone-600 dark:text-stone-400 font-serif leading-relaxed ${isTwoCol ? 'text-right border-r border-stone-200 dark:border-stone-800 pr-4' : ''}">${highlightTerms(item.source, 'source')}</div>`;
+    }
+    if (showTarget) {
+        html += `<div class="text-stone-900 dark:text-emerald-100 font-serif leading-relaxed ${isTwoCol ? 'pl-2' : ''}">${highlightTerms(item.target, 'target')}</div>`;
+    }
+    if (item.warnings && item.warnings.length > 0) {
+        html += `<div class="col-span-2 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg flex items-center gap-2 mt-2 border border-amber-200 dark:border-amber-800/30">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <span>${item.warnings.join(', ')}</span>
+        </div>`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+function renderSkeletonPreview() {
+    if (!previewContainer) return;
+    
+    const skeletonRow = `
+        <div class="grid grid-cols-2 gap-4 p-4 border-b border-stone-200 dark:border-stone-800" style="height: ${ROW_HEIGHT}px;">
+            <div class="space-y-2 border-r border-stone-200 dark:border-stone-800 pr-4">
+                <div class="h-4 w-3/4 ml-auto skeleton rounded"></div>
+                <div class="h-4 w-1/2 ml-auto skeleton rounded"></div>
+            </div>
+            <div class="space-y-2 pl-2">
+                <div class="h-4 w-5/6 skeleton rounded"></div>
+                <div class="h-4 w-2/3 skeleton rounded"></div>
+            </div>
+        </div>
+    `;
+    
+    previewContainer.innerHTML = Array(6).fill(skeletonRow).join('');
+}
+
+function renderPreview() {
+    if (!previewContainer) return;
+
+    // Show empty state if no items
+    if (previewItems.length === 0) {
+        previewContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-center p-8 opacity-60">
+                <div class="w-16 h-16 bg-stone-100 dark:bg-stone-900 rounded-full flex items-center justify-center mb-4 text-stone-300 dark:text-stone-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <h3 class="text-stone-900 dark:text-stone-200 font-medium mb-1">Preview Area</h3>
+                <p class="text-sm text-stone-500 dark:text-stone-400 max-w-xs">
+                    Translation progress and results will appear here in real-time.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    filteredItems = getFilteredItems();
+    const totalItems = filteredItems.length;
+    
+    // For small lists, render all
+    if (totalItems <= VISIBLE_ROWS) {
+        previewContainer.innerHTML = filteredItems.map(renderPreviewRow).join('');
+        previewContainer.scrollTop = previewContainer.scrollHeight;
+        return;
+    }
+
+    // Virtual scrolling for large lists
+    const startIdx = Math.max(0, Math.floor(virtualScrollTop / ROW_HEIGHT));
+    const endIdx = Math.min(totalItems, startIdx + VISIBLE_ROWS);
+    const visibleItems = filteredItems.slice(startIdx, endIdx);
+    
+    const paddingTop = startIdx * ROW_HEIGHT;
+    const paddingBottom = (totalItems - endIdx) * ROW_HEIGHT;
+    
+    previewContainer.innerHTML = `
+        <div style="height: ${paddingTop}px;"></div>
+        ${visibleItems.map(renderPreviewRow).join('')}
+        <div style="height: ${paddingBottom}px;"></div>
+    `;
+}
 
 window.addEventListener("DOMContentLoaded", async () => {
     initTheme();
@@ -1115,7 +1323,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         key: 's',
         ctrl: true,
         description: 'Save configuration',
-        action: () => saveConfig()
+        action: async () => await saveConfig()
     });
 
     registerShortcut({
@@ -1159,15 +1367,30 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (configForm) {
-        configForm.addEventListener("submit", (e) => {
+        configForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            saveConfig();
+            await saveConfig();
         });
     }
 
     if (reloadBtn) {
         reloadBtn.addEventListener("click", () => {
             loadConfig();
+        });
+    }
+
+    if (apiTemperature && apiTemperatureValue) {
+        apiTemperature.addEventListener("input", () => {
+            apiTemperatureValue.textContent = apiTemperature.value;
+        });
+    }
+
+    if (budgetPresetBtn) {
+        budgetPresetBtn.addEventListener("click", async () => {
+            applyBudgetPreset();
+            await saveConfig();
+            updateCostEstimation();
+            toast.success("Budget preset applied: OpenRouter + google/gemini-2.5-flash");
         });
     }
 
@@ -1346,43 +1569,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Listen for translation progress
-    // Helper: Escape HTML
-    function escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Helper: Highlight glossary terms
-    function highlightTerms(text: string, mode: 'source' | 'target' = 'source'): string {
-        if (!text) return "";
-        let result = escapeHtml(text);
-        
-        if (!glossaryTerms.length) return result;
-
-        const sortedTerms = [...glossaryTerms].sort((a, b) => {
-            const lenA = mode === 'source' ? a.source.length : a.target.length;
-            const lenB = mode === 'source' ? b.source.length : b.target.length;
-            return lenB - lenA;
-        });
-        
-        for (const term of sortedTerms) {
-            const key = mode === 'source' ? term.source : term.target;
-            const escapedKey = escapeHtml(key);
-            
-            if (result.includes(escapedKey)) {
-                const tooltip = mode === 'source' 
-                    ? `${term.target}${term.context ? ' (' + term.context + ')' : ''}`
-                    : `${term.source}${term.context ? ' (' + term.context + ')' : ''}`;
-                const escapedTooltip = escapeHtml(tooltip);
-                    
-                const replacement = `<span class="text-amber-600 dark:text-amber-400 font-medium border-b border-dashed border-amber-500/50 cursor-help" title="Glossary: ${escapedTooltip}">${escapedKey}</span>`;
-                result = result.split(escapedKey).join(replacement);
-            }
-        }
-        return result;
-    }
-
+    
     // --- Preview Logic ---
     const previewSearchInput = document.getElementById('preview-search') as HTMLInputElement;
     const previewFilterSelect = document.getElementById('preview-filter') as HTMLSelectElement;
@@ -1399,91 +1586,6 @@ window.addEventListener("DOMContentLoaded", async () => {
             previewFilter = (e.target as HTMLSelectElement).value as any;
             renderPreview();
         });
-    }
-
-    // Virtual scrolling state
-    const VISIBLE_ROWS = 50;
-    const ROW_HEIGHT = 80; // Approximate row height in pixels
-    let virtualScrollTop = 0;
-    let filteredItems: PreviewItem[] = [];
-
-    function getFilteredItems(): PreviewItem[] {
-        return previewItems.filter(item => {
-            if (previewSearch) {
-                const searchLower = previewSearch.toLowerCase();
-                if (!item.source.toLowerCase().includes(searchLower) && !item.target.toLowerCase().includes(searchLower)) {
-                    return false;
-                }
-            }
-            if (previewFilter === 'warnings') {
-                return item.warnings && item.warnings.length > 0;
-            }
-            return true;
-        });
-    }
-
-    function renderPreviewRow(item: PreviewItem): string {
-        const showSource = previewFilter === 'all' || previewFilter === 'source' || previewFilter === 'warnings';
-        const showTarget = previewFilter === 'all' || previewFilter === 'target' || previewFilter === 'warnings';
-        const isTwoCol = previewFilter === 'all' || previewFilter === 'warnings';
-        
-        let html = `<div class="grid ${isTwoCol ? 'grid-cols-2' : 'grid-cols-1'} gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors" style="min-height: ${ROW_HEIGHT}px;">`;
-        
-        if (showSource) {
-            html += `<div class="text-gray-400 font-serif leading-relaxed ${isTwoCol ? 'text-right border-r border-gray-700 pr-4' : ''}">${highlightTerms(item.source, 'source')}</div>`;
-        }
-        if (showTarget) {
-            html += `<div class="text-emerald-300 font-serif leading-relaxed ${isTwoCol ? 'pl-2' : ''}">${highlightTerms(item.target, 'target')}</div>`;
-        }
-        if (item.warnings && item.warnings.length > 0) {
-            html += `<div class="col-span-2 text-xs text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded flex items-center gap-2 mt-1 border border-amber-200 dark:border-amber-800/30">
-                <span>⚠️ QA Warning:</span> ${item.warnings.join(', ')}
-            </div>`;
-        }
-        html += `</div>`;
-        return html;
-    }
-
-    function renderPreview() {
-        if (!previewContainer) return;
-
-        // Show empty state if no items
-        if (previewItems.length === 0) {
-            previewContainer.innerHTML = `
-                <div class="text-center py-12 px-4">
-                    <div class="text-4xl mb-3 opacity-50">📝</div>
-                    <p class="text-sm text-gray-400 mb-2">No translations yet</p>
-                    <p class="text-xs text-gray-500">
-                        Start a translation to see live preview here
-                    </p>
-                </div>
-            `;
-            return;
-        }
-
-        filteredItems = getFilteredItems();
-        const totalItems = filteredItems.length;
-        
-        // For small lists, render all
-        if (totalItems <= VISIBLE_ROWS) {
-            previewContainer.innerHTML = filteredItems.map(renderPreviewRow).join('');
-            previewContainer.scrollTop = previewContainer.scrollHeight;
-            return;
-        }
-
-        // Virtual scrolling for large lists
-        const startIdx = Math.max(0, Math.floor(virtualScrollTop / ROW_HEIGHT));
-        const endIdx = Math.min(totalItems, startIdx + VISIBLE_ROWS);
-        const visibleItems = filteredItems.slice(startIdx, endIdx);
-        
-        const paddingTop = startIdx * ROW_HEIGHT;
-        const paddingBottom = (totalItems - endIdx) * ROW_HEIGHT;
-        
-        previewContainer.innerHTML = `
-            <div style="height: ${paddingTop}px;"></div>
-            ${visibleItems.map(renderPreviewRow).join('')}
-            <div style="height: ${paddingBottom}px;"></div>
-        `;
     }
 
     // Handle scroll for virtual scrolling
@@ -1509,8 +1611,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         
         // Reset state
         previewItems = [];
-        if (previewContainer) previewContainer.innerHTML = "";
+        renderSkeletonPreview();
         if (previewStatus) previewStatus.textContent = `0 / ${total}`;
+        
+        // Reset stats with skeleton
+        if (statsPanel) statsPanel.classList.remove('hidden');
+        if (statsFilesCompleted) statsFilesCompleted.innerHTML = '<span class="skeleton rounded px-2">0</span>';
+        if (statsBlocksCompleted) statsBlocksCompleted.innerHTML = '<span class="skeleton rounded px-2">0</span>';
     });
 
     await listen('translation-progress', (event) => {
@@ -1534,23 +1641,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (!previewSearch && previewFilter === 'all' && previewItems.length <= VISIBLE_ROWS) {
             // Small list: direct append
             if (previewContainer) {
-                const row = document.createElement("div");
-                row.className = "grid grid-cols-2 gap-4 p-3 border-b border-gray-700/50 text-sm hover:bg-gray-800/50 transition-colors";
-                row.style.minHeight = `${ROW_HEIGHT}px`;
-                
-                let content = `
-                    <div class="text-gray-400 font-serif leading-relaxed text-right border-r border-gray-700 pr-4">${highlightTerms(source, 'source')}</div>
-                    <div class="text-emerald-300 font-serif leading-relaxed pl-2">${highlightTerms(target, 'target')}</div>
-                `;
-                
-                if (warnings.length > 0) {
-                    content += `<div class="col-span-2 text-xs text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded flex items-center gap-2 mt-1 border border-amber-200 dark:border-amber-800/30">
-                        <span>⚠️ QA Warning:</span> ${warnings.join(', ')}
-                     </div>`;
+                // Remove skeleton if this is the first item
+                if (previewItems.length === 1) {
+                    previewContainer.innerHTML = '';
                 }
                 
-                row.innerHTML = content;
-                previewContainer.appendChild(row);
+                const item = previewItems[previewItems.length - 1];
+                previewContainer.insertAdjacentHTML('beforeend', renderPreviewRow(item));
                 previewContainer.scrollTop = previewContainer.scrollHeight;
             }
         } else {

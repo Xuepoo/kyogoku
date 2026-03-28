@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-28
+
+### Added
+- **GUI Settings Panel**: Complete settings UI for API configuration, model selection, and translation parameters.
+  * Temperature slider (0.0-2.0) for controlling output randomness.
+  * Max tokens input for response length control.
+  * Budget preset button (one-click setup for cost-effective OpenRouter + gemini-2.5-flash).
+  * Keyboard shortcuts and accessibility improvements (ARIA labels, focus management).
+- **Performance Test Suite**: Comprehensive test infrastructure for validation and cost analysis.
+  * Test corpus: 18 files across 6 formats (TXT, SRT, ASS, VTT, JSON, RPY) in 3 sizes (short/medium/long).
+  * Automated test runner (`tests/perf_test.py`) with CSV metrics logging.
+  * Performance report documenting speed, cost, and memory usage.
+  * Full test execution: 1,811 blocks translated in 3.6 minutes for $0.0086.
+- **Production Hardening**:
+  * Comprehensive user guide and CLI documentation.
+  * Input validation and sanitization for all user inputs.
+  * Structured logging with tracing and `--debug` mode for troubleshooting.
+  * Cache health check and recovery system for corrupted databases.
+  * Parser edge case tests and improved API error messages.
+  * Sample translation files for testing and validation.
+- **Security Updates**:
+  * Updated wasmtime to v43 (fixes 4 security vulnerabilities).
+  * Enhanced error messages and empty state handling in GUI.
+
+### Changed
+- **Default Model**: Changed to `google/gemini-2.5-flash` for optimal cost-effectiveness.
+  * ~33× cheaper than gpt-4o for same quality on translation tasks.
+  * Average cost: $0.000005/block (¥0.00004/block).
+- **Model Validation**: Updated to allow `/` in model names for OpenRouter format (e.g., `google/gemini-2.5-flash`).
+- **Config Defaults**: Provider changed from OpenAI to Google, reflecting new recommended setup.
+
+### Fixed
+- All clippy warnings and formatting issues resolved.
+- Async/await patterns in GUI event handlers for proper error handling.
+- Accessibility improvements: labels linked to inputs, ARIA attributes added.
+- CI/CD dependencies: installed GTK and system libraries for headless builds.
+
+### Performance
+- **Speed**: Average 0.12 seconds per dialogue block.
+- **Cost**: Average $0.000005 per block with gemini-2.5-flash.
+- **Memory**: Stable with < 0.2 MB delta, no memory leaks detected.
+- **Cache**: Effective caching reduces repeat translations to < 0.1 seconds.
+
+### Documentation
+- Added comprehensive performance report (`tests/PERFORMANCE_REPORT.md`).
+- Updated README with new features and testing instructions.
+- Improved API documentation and inline comments.
+
 ## [0.4.0] - 2026-03-24
 
 ### Added

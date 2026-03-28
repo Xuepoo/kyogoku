@@ -50,10 +50,10 @@ fn default_temperature() -> f32 {
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
-            provider: ApiProvider::OpenAI,
+            provider: ApiProvider::Google,
             api_key: None,
             api_base: None,
-            model: "gpt-4o".to_string(),
+            model: "google/gemini-2.5-flash".to_string(),
             max_tokens: default_max_tokens(),
             temperature: default_temperature(),
         }
@@ -77,14 +77,14 @@ impl ApiConfig {
 
     /// Validate and sanitize configuration values
     pub fn validate(&self) -> Result<()> {
-        // Validate model name (alphanumeric, dash, underscore, dot)
+        // Validate model name (alphanumeric, dash, underscore, dot, slash for provider/model format)
         if !self
             .model
             .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/')
         {
             anyhow::bail!(
-                "Invalid model name: must contain only alphanumeric characters, dash, underscore, or dot"
+                "Invalid model name: must contain only alphanumeric characters, dash, underscore, dot, or slash"
             );
         }
 
@@ -395,7 +395,8 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = Config::default();
-        assert_eq!(config.api.provider, ApiProvider::OpenAI);
+        assert_eq!(config.api.provider, ApiProvider::Google);
+        assert_eq!(config.api.model, "google/gemini-2.5-flash");
         assert_eq!(config.project.source_lang, "ja");
         assert_eq!(config.project.target_lang, "zh");
         assert_eq!(config.translation.style, TranslationStyle::Literary);
@@ -405,7 +406,10 @@ mod tests {
     #[test]
     fn test_api_base_url() {
         let mut api = ApiConfig::default();
-        assert_eq!(api.get_api_base(), "https://api.openai.com/v1");
+        assert_eq!(
+            api.get_api_base(),
+            "https://generativelanguage.googleapis.com/v1beta"
+        );
 
         api.provider = ApiProvider::DeepSeek;
         assert_eq!(api.get_api_base(), "https://api.deepseek.com/v1");

@@ -31,3 +31,4 @@ dist/
 .vite/
 
 models/
+tests/perf-output/
